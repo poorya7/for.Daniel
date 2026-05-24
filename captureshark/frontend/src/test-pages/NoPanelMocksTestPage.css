@@ -1,0 +1,278 @@
+/*
+ * No-panel mocks test page — 7 layout directions for the "kill the
+ * sheet, water lives at the bottom of the canvas" idea. Each variant
+ * sets a single CSS var (--water-y) for where the water sits, plus
+ * variant-specific positioning for the edit content / loader text.
+ *
+ * The water layer (SharkLoader) is anchored absolutely so it does
+ * NOT move between edit and loader phases — that's the whole point
+ * of idea #2. Only the content above it swaps.
+ *
+ * Cream palette only. No animation on the phase swap (per spec).
+ */
+
+.np {
+  position: fixed;
+  inset: 0;
+  background: var(--cream-page-bg, #FAF6EE);
+  font-family: var(--font-sans);
+  color: var(--cream-espresso);
+  overflow: hidden;
+  height: 100svh;
+  width: 100%;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---- Water layer — fixed bottom anchor, variant overrides --water-y ---- */
+
+.np__water {
+  position: absolute;
+  left: 50%;
+  bottom: var(--water-y, 60px);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* In edit state, the FIN is hidden — water carries on but no shark
+   surfaces. The fin reappears the moment phase flips to loader. */
+.np--edit .shark-loader__fin-clip {
+  visibility: hidden;
+}
+
+/* ---- Top header (counter + variant name) ---- */
+
+.np__head {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.np__counter {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--cream-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.np__name {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--cream-text-faint);
+  text-transform: uppercase;
+}
+
+/* ---- Swipe hint (visible on first card only, auto-fades) ---- */
+
+.np__hint {
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--cream-text-faint);
+  z-index: 40;
+  pointer-events: none;
+  text-transform: uppercase;
+  opacity: 0;
+  animation: np-hint 5s ease-out 0.6s 1 forwards;
+}
+@keyframes np-hint {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ---- Content layers (edit + loader text) ---- */
+
+.np__edit,
+.np__loader-text {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 380px;
+  padding: 0 24px;
+  z-index: 20;
+}
+
+.np__textarea {
+  width: 100%;
+  min-height: 140px;
+  resize: none;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--cream-espresso);
+  font-family: inherit;
+  font-size: 17px;
+  line-height: 1.5;
+  border: 1px solid var(--cream-text-hairline);
+  border-radius: 14px;
+  outline: none;
+  transition: border-color 200ms ease;
+  -webkit-appearance: none;
+}
+.np__textarea:focus {
+  border-color: var(--cream-text-hairline-strong);
+}
+.np__textarea::placeholder {
+  color: var(--cream-text-faint);
+}
+
+.np__extract {
+  margin-top: 14px;
+  width: 100%;
+  min-height: 56px;
+  border: none;
+  border-radius: 14px;
+  background: var(--cream-espresso);
+  color: var(--cream-text-on-dark);
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 120ms ease;
+}
+.np__extract:active {
+  transform: scale(0.98);
+}
+
+.np__eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--cream-text-subtle);
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.np__subtext {
+  font-size: 17px;
+  color: var(--cream-espresso);
+  text-align: center;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+/* ==========================================================
+ * Variant 1 — Anchor bottom
+ * Classic: water sits low (~30% of viewport), content centred
+ * in the upper area. The "safe" default direction.
+ * ========================================================== */
+.np--anchor-bottom { --water-y: 80px; }
+.np--anchor-bottom .np__edit { top: 22%; }
+.np--anchor-bottom .np__loader-text { top: 30%; }
+
+/* ==========================================================
+ * Variant 2 — Floating center
+ * Water as thin band at the very bottom (~15%). Content
+ * vertically centred. Maximum airiness.
+ * ========================================================== */
+.np--floating-center { --water-y: -40px; }
+.np--floating-center .np__edit { top: 30%; }
+.np--floating-center .np__loader-text { top: 38%; }
+
+/* ==========================================================
+ * Variant 3 — Hero top
+ * Bold lead question at the top, textarea + Extract cascading
+ * below it. Eyebrow phrasing reframes the screen.
+ * ========================================================== */
+.np--hero-top { --water-y: 50px; }
+.np--hero-top .np__edit { top: 14%; }
+.np--hero-top .np__edit::before {
+  content: "What's your lead about?";
+  display: block;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 24px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  color: var(--cream-espresso);
+  margin-bottom: 20px;
+  line-height: 1.25;
+}
+.np--hero-top .np__loader-text { top: 26%; }
+
+/* ==========================================================
+ * Variant 4 — Edge textarea
+ * Borderless textarea (single hairline underneath). Extract
+ * as a pill. Most reduced surface.
+ * ========================================================== */
+.np--edge-textarea { --water-y: 70px; }
+.np--edge-textarea .np__edit { top: 20%; }
+.np--edge-textarea .np__textarea {
+  border: none;
+  border-bottom: 1px solid var(--cream-text-hairline-strong);
+  border-radius: 0;
+  background: transparent;
+  padding: 8px 0 12px;
+  min-height: 120px;
+}
+.np--edge-textarea .np__extract {
+  border-radius: 28px;
+  margin-top: 22px;
+}
+.np--edge-textarea .np__loader-text { top: 30%; }
+
+/* ==========================================================
+ * Variant 5 — Wide horizon
+ * Water occupies the bottom ~45%. Dominant horizon. Content
+ * compressed up top. Fin gets a bigger stage.
+ * ========================================================== */
+.np--wide-horizon { --water-y: 240px; }
+.np--wide-horizon .np__edit { top: 8%; }
+.np--wide-horizon .np__edit .np__textarea { min-height: 120px; }
+.np--wide-horizon .np__loader-text { top: 18%; }
+
+/* ==========================================================
+ * Variant 6 — Tight top
+ * Content jammed near the top. Vast empty cream middle as
+ * intentional breathing. Water at standard low position.
+ * ========================================================== */
+.np--tight-top { --water-y: 70px; }
+.np--tight-top .np__edit { top: 9%; }
+.np--tight-top .np__edit .np__textarea { min-height: 100px; }
+.np--tight-top .np__loader-text { top: 13%; }
+
+/* ==========================================================
+ * Variant 7 — Glass whisper
+ * Subtle translucent zone behind textarea so the content area
+ * has a soft anchor without becoming a hard panel. Tests
+ * whether "almost a panel" still reads as panel-less.
+ * ========================================================== */
+.np--glass-whisper { --water-y: 60px; }
+.np--glass-whisper .np__edit {
+  top: 18%;
+  padding: 22px;
+  border-radius: 22px;
+  background: rgba(255, 252, 244, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 8px 28px rgba(60, 40, 20, 0.05);
+  max-width: 360px;
+}
+.np--glass-whisper .np__textarea {
+  background: transparent;
+  border: none;
+  padding: 8px 0;
+  min-height: 110px;
+}
+.np--glass-whisper .np__extract {
+  margin-top: 10px;
+}
+.np--glass-whisper .np__loader-text { top: 30%; }

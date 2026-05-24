@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>True Submerged Shark Loader</title>
+    <style>
+        /* 1. THE ENVIRONMENT */
+        body {
+            margin: 0;
+            padding: 0;
+            /* A very dark, moody blue-black */
+            background-color: #03060a; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+        }
+
+        /* 2. THE LOCALIZED POOL (Smaller play area) */
+        .pool-container {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 3. THE WATER MASK (The magic trick)
+           This covers the bottom half of the pool with the EXACT same color as the body.
+           The shark lives behind this layer, so it always looks submerged! */
+        .water-mask {
+            position: absolute;
+            bottom: 0;
+            left: -50px;
+            width: 350px;
+            height: 50%;
+            background-color: #03060a; 
+            z-index: 10;
+            /* A tiny highlight to show the water's surface edge */
+            border-top: 1px solid rgba(0, 140, 186, 0.15);
+        }
+
+        /* 4. THE X-AXIS PATROL & TURNING 
+           Moves left and right, and uses scaleX to physically turn the shark around */
+        .swim-x {
+            position: absolute;
+            top: 50%;
+            z-index: 5; /* Behind the mask */
+            animation: patrol-x 12s infinite ease-in-out;
+        }
+
+        /* 5. THE Y-AXIS BREACH
+           Moves up and down independently of the left/right movement */
+        .swim-y {
+            animation: breach-y 7s infinite ease-in-out;
+        }
+
+        /* 6. THE FIN */
+        .shark-fin {
+            width: 70px;
+            height: 80px;
+            fill: #0d1522;
+            /* Shadow to separate it slightly from the dark background */
+            filter: drop-shadow(0 -2px 5px rgba(0,0,0,0.5));
+            /* Rests slightly below the surface line by default */
+            transform: translateY(10px); 
+        }
+
+        /* 7. THE SURFACE RIPPLES
+           These sit ON TOP of the mask (z-index 15) and follow the X-axis container */
+        .ripple-container {
+            position: absolute;
+            top: 50%;
+            z-index: 15;
+            animation: patrol-x 12s infinite ease-in-out; /* Matches the shark's X path */
+        }
+
+        .wake-ripple {
+            position: absolute;
+            left: -40px; /* Center under the fin */
+            top: -5px;
+            width: 80px;
+            height: 10px;
+            border-radius: 50%;
+            border: 1px solid transparent;
+            border-bottom: 2px solid rgba(0, 140, 186, 0.4);
+            opacity: 0;
+            animation: ripple-fade 3s infinite ease-out;
+        }
+
+        .wake-ripple:nth-child(2) { animation-delay: 1s; }
+        .wake-ripple:nth-child(3) { animation-delay: 2s; }
+
+        /* --- THE NEW ANIMATIONS --- */
+
+        /* Swims right, FLIPS, swims left, FLIPS */
+        @keyframes patrol-x {
+            0%   { transform: translateX(-70px) scaleX(1); } /* Start left, facing right */
+            45%  { transform: translateX(70px) scaleX(1); }  /* Reach right edge */
+            50%  { transform: translateX(70px) scaleX(-1); } /* Flip to face left */
+            95%  { transform: translateX(-70px) scaleX(-1); }/* Reach left edge */
+            100% { transform: translateX(-70px) scaleX(1); } /* Flip to face right */
+        }
+
+        /* Deep dive and high breach behind the mask */
+        @keyframes breach-y {
+            0%, 100% { transform: translateY(50px) rotate(5deg); } /* Deep underwater (hidden by mask) */
+            50%      { transform: translateY(-30px) rotate(-5deg); } /* High breach (bottom still hidden by mask) */
+        }
+
+        /* Calm surface ripples */
+        @keyframes ripple-fade {
+            0% {
+                transform: scale(0.2) translateX(-10px);
+                opacity: 0;
+            }
+            30% { opacity: 1; }
+            100% {
+                transform: scale(1.5) translateX(-30px);
+                opacity: 0;
+            }
+        }
+
+        /* Text */
+        .loading-text {
+            position: absolute;
+            bottom: 20px;
+            color: rgba(0, 140, 186, 0.3);
+            font-size: 11px;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            z-index: 20;
+            animation: pulse 3s infinite alternate ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.3; }
+            100% { opacity: 0.8; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="pool-container">
+        
+        <!-- THE MASK: Hides the bottom half of the pool -->
+        <div class="water-mask"></div>
+
+        <!-- THE SHARK: Moves behind the mask -->
+        <div class="swim-x">
+            <div class="swim-y">
+                <svg class="shark-fin" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10,95 C30,90 45,65 52,35 C57,12 62,5 72,10 C70,25 72,50 88,95 Z" />
+                </svg>
+            </div>
+        </div>
+
+        <!-- THE RIPPLES: On top of the water -->
+        <div class="ripple-container">
+            <div class="wake-ripple"></div>
+            <div class="wake-ripple"></div>
+            <div class="wake-ripple"></div>
+        </div>
+
+        <div class="loading-text">Loading</div>
+
+    </div>
+
+</body>
+</html>

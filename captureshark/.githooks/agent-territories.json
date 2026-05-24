@@ -1,0 +1,23 @@
+{
+  "_comment": "Registry of Claude agents working concurrently on this repo. Each agent owns the listed paths exclusively — the pre-commit hook (.githooks/agent-pre-commit) refuses to let any agent commit paths owned by ANOTHER agent. Add or remove agents here when the team changes. Paths are matched as PREFIXES (so 'frontend/src/lib/queue/' covers every file under that folder).",
+  "agents": {
+    "queue": {
+      "description": "Offline-resilient capture queue, drainer, PWA / offline app shell, queue UI surfaces.",
+      "exclusive_paths": [
+        "frontend/src/lib/queue/",
+        "frontend/src/features/queue/",
+        "docs/_planning/offline_queue/",
+        "frontend/public/pwa-",
+        "frontend/public/manifest.webmanifest"
+      ]
+    },
+    "photo": {
+      "description": "Photo capture flow, vision extraction (Doc AI), bake-off scripts.",
+      "exclusive_paths": [
+        "frontend/src/components/PhotoCapture/",
+        "backend/src/captureshark/adapters/google_docai_vision_extractor.py",
+        "docs/_tests/vision_bakeoff/"
+      ]
+    }
+  }
+}

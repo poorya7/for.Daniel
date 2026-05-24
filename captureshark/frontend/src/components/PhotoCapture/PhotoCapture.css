@@ -1,0 +1,475 @@
+/* Photo capture — full-bleed camera surface.
+ *
+ * Visual treatment:
+ *   - Full viewport black backdrop (z-index above everything else,
+ *     including the CaptureSheet — though those never render
+ *     simultaneously since they're rendered conditionally by App.tsx).
+ *   - Camera viewport fills the whole surface; controls float on top.
+ *   - Safe-area insets honor the iOS notch + home indicator + Android
+ *     navigation bar. Capture button sits above the home indicator
+ *     even on edge-to-edge phones.
+ *   - Large tap targets per the Linda persona (60×60pt+ for the
+ *     shutter; 56×56pt+ for secondary controls).
+ *   - No icon-only controls for primary actions — the shutter is
+ *     icon-only but its meaning is universal; the gallery / cancel
+ *     buttons carry visible labels or unambiguous glyphs.
+ */
+
+.photo-capture {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* iOS Safari sometimes leaves an inner highlight rectangle when
+   * the surface is tapped. Strip it so taps feel native. */
+  -webkit-tap-highlight-color: transparent;
+  /* Phase 1 of docs/photo-zoom-crop/01_PLAN.md: pinch on the camera
+   * surface was zooming the whole page. Disable native gesture
+   * interpretation so the browser doesn't pinch-zoom or
+   * double-tap-zoom here. Taps still fire as click events. Phase 2
+   * will own pinch + pan on this surface explicitly. */
+  touch-action: none;
+}
+
+.photo-capture__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+
+/* Phase 3 of docs/photo-zoom-crop/01_PLAN.md: the live video is
+ * wrapped in a pinch + pan gesture surface so the broker can frame
+ * which part of the sheet gets sent to the AI. The surface takes
+ * itself out of the parent's flex flow (the parent uses centred
+ * flex for the result cards) and fills the full camera viewport. */
+.photo-capture__crop-surface.pinch-pan-crop-surface {
+  position: absolute;
+  inset: 0;
+}
+
+.photo-capture__file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* --- Cancel ------------------------------------------------------ */
+
+.photo-capture__cancel {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0) + 16px);
+  left: calc(env(safe-area-inset-left, 0) + 16px);
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.photo-capture__cancel:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+/* --- Status overlays --------------------------------------------- */
+
+.photo-capture__status {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: rgba(255, 255, 255, 0.92);
+  font-family:
+    "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  padding: 18px 28px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  max-width: min(420px, calc(100vw - 48px));
+  pointer-events: none;
+}
+
+.photo-capture__status--denied {
+  /* Denied is a calm state, not an error — the gallery upload path
+   * is still available below. Use a softer treatment so it doesn't
+   * read as alarming. */
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.photo-capture__status--error {
+  background: rgba(120, 30, 30, 0.75);
+}
+
+.photo-capture__status--working {
+  /* Legacy plain-pill kept for any non-Reading short-window overlay
+   * that might still target this class. The new
+   * `.photo-result-card--reading` card supersedes it for the actual
+   * extraction window. */
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.photo-capture__denied-headline {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.photo-capture__denied-detail {
+  margin: 0;
+  font-size: 15px;
+  opacity: 0.85;
+}
+
+/* --- Photo result card: Reading / Failure ------------------------ */
+/*
+ * Mirrors the saving-panel aesthetic from OutcomePanel (the saving
+ * surface inside CaptureSheet): cyan pulse dots above a soft-sage
+ * Outfit verb, centred on a cyan-tinted glass card. Uses standalone
+ * class names so it never collides with `.outcome.*` in
+ * CaptureSheet.css. The visual rules are COPIED (not inherited or
+ * imported) so editing OutcomePanel won't accidentally re-style
+ * this surface — and vice versa.
+ *
+ * Two variants share the card chrome:
+ *   - `--reading`: shown across the ~2s extraction window. Dots +
+ *     "Reading photo" verb. Pointer-events:none.
+ *   - `--failure`: shown when the backend couldn't extract a usable
+ *     row. Larger calm message + Retake button + (after ≥2 fails)
+ *     a quiet "Or type it in instead" link. Pointer-events:auto.
+ */
+/* Card chrome — character-for-character copy of `.capture-sheet`
+   (CaptureSheet.css line 117): same navy linear-gradient with the
+   cyan top-radial wash, same cyan rim, same shadow stack. */
+.photo-result-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(360px, calc(100vw - 48px));
+  padding: 32px 28px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.12), transparent 42%),
+    linear-gradient(160deg, rgb(30, 41, 59), rgb(15, 23, 42));
+  border: 1px solid rgba(6, 182, 212, 0.18);
+  box-shadow:
+    0 14px 32px -10px rgba(0, 0, 0, 0.6),
+    0 4px 12px -6px rgba(6, 182, 212, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+}
+
+/* Reading state strips the card chrome — a single bordered box around
+   loading text reads as a stranded dialog. The dots + verb float
+   directly on the camera surface instead, the way OS-level loading
+   indicators do. */
+.photo-result-card--reading {
+  pointer-events: none;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 0;
+}
+
+.photo-result-card--failure {
+  pointer-events: auto;
+}
+
+/* Pulse dots — copied shape + animation from `.outcome__dots` so the
+   Reading state feels like a sibling of the Saving state. */
+.photo-result-card__dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+}
+
+.photo-result-card__dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-brand-bright);
+  opacity: 0.25;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.45);
+  animation: photo-result-dots-pulse 1.8s ease-in-out infinite;
+}
+
+.photo-result-card__dots span:nth-child(1) { animation-delay: 0s; }
+.photo-result-card__dots span:nth-child(2) { animation-delay: 0.16s; }
+.photo-result-card__dots span:nth-child(3) { animation-delay: 0.32s; }
+.photo-result-card__dots span:nth-child(4) { animation-delay: 0.48s; }
+.photo-result-card__dots span:nth-child(5) { animation-delay: 0.64s; }
+
+@keyframes photo-result-dots-pulse {
+  0%, 100% { opacity: 0.2; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* Verb — character-for-character copy of `.outcome__verb`
+   (CaptureSheet.css line 1918). Same Outfit family + weight + size +
+   tracking + sage colour + glow as the "Saving" / "Saved" verb. */
+.photo-result-card__verb {
+  margin: 0;
+  font-family: "Outfit", var(--font-sans);
+  font-weight: 500;
+  font-size: 44px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: #bbf7d0;
+  text-shadow: 0 0 26px rgba(187, 247, 208, 0.18);
+}
+
+/* Failure-verb override — failure headlines are 2-4 words (e.g.
+   "Hard to read"), still meant to read as a verb-level headline.
+   Same Outfit weight + tracking + glow shape as the success verb;
+   the colour is the only semantic shift (sage = success ⇒ amber =
+   warning). Size steps down slightly so long words like "Couldn't"
+   don't overflow on the narrowest phones. */
+.photo-result-card__verb--failure {
+  font-size: 36px;
+  color: #fde68a;  /* amber-200 — same lightness/saturation profile
+                     as the sage #bbf7d0 used on success */
+  text-shadow: 0 0 26px rgba(253, 230, 138, 0.18);
+}
+
+/* Warning indicator — character-for-character copy of the saved
+   panel's check-circle (`.outcome__indicator` + `.outcome__check`
+   in CaptureSheet.css), but in amber instead of sage so the surface
+   reads as "needs attention" rather than "success". */
+.photo-result-card__indicator {
+  display: grid;
+  grid-template-areas: "stack";
+  place-items: center;
+  width: 72px;
+  height: 72px;
+}
+
+.photo-result-card__warning {
+  grid-area: stack;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(251, 191, 36, 0.16);  /* amber-400 @ 16% */
+  color: #fbbf24;                        /* amber-400 — the project's
+                                            standard amber accent */
+  font-family: "Outfit", var(--font-sans);
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 64px;
+  text-align: center;
+  box-shadow: 0 8px 32px -8px rgba(251, 191, 36, 0.45);
+}
+
+/* Subline — character-for-character copy of `.outcome__line`
+   (CaptureSheet.css line 1953). Same Outfit + weight + size +
+   tracking + muted colour as "your lead". */
+.photo-result-card__line {
+  margin: 0;
+  font-family: "Outfit", var(--font-sans);
+  font-weight: 500;
+  font-size: 17px;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  color: var(--color-text-muted);
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  max-width: 100%;
+}
+
+.photo-result-card__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+/* Retake button — character-for-character copy of `.outcome__primary`
+   (CaptureSheet.css line 2068). Same filled cyan-gradient + dark
+   text + 56px min-height + 14px radius + cyan glow as
+   "Capture another". `opacity: 0` from the saving panel is omitted
+   here — that property is part of the scanner-in cascade which
+   doesn't apply on the photo surface. */
+.photo-result-card__retake {
+  width: 100%;
+  min-height: 56px;
+  padding: 0 22px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(
+    145deg,
+    var(--color-brand-bright),
+    var(--color-accent)
+  );
+  color: #06112a;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(6, 182, 212, 0.25);
+  transition: box-shadow 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) {
+  .photo-result-card__retake:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 32px rgba(6, 182, 212, 0.35);
+    transition:
+      transform 120ms ease,
+      box-shadow 120ms ease;
+  }
+}
+
+.photo-result-card__retake:active {
+  transform: scale(0.98);
+  transition: transform 120ms ease;
+}
+
+/* Quiet link — character-for-character copy of `.outcome__link`
+   (CaptureSheet.css line 2111). Same muted colour + 15px size +
+   no underline as "Open in Google Sheets". */
+.photo-result-card__type-instead {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  padding: 6px 14px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.photo-result-card__type-instead:hover {
+  color: var(--color-brand-soft);
+}
+
+/* --- Controls row (bottom) --------------------------------------- */
+
+.photo-capture__controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0) + 28px);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0;
+  padding: 0 28px;
+}
+
+.photo-capture__control {
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 0;
+  padding: 6px 12px;
+  color: #fff;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 56px;
+  min-height: 56px;
+}
+
+.photo-capture__control:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.photo-capture__control--gallery {
+  justify-self: start;
+}
+
+.photo-capture__control--spacer {
+  /* Visual placeholder so the shutter stays centered between two
+   * grid cells of equal weight, even when there's nothing in the
+   * right slot yet. Removed in a polish slice once flip-camera /
+   * flash actually ship. */
+  min-width: 56px;
+  justify-self: end;
+}
+
+.photo-capture__control-label {
+  font-family:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  opacity: 0.92;
+}
+
+/* --- Shutter ----------------------------------------------------- */
+
+.photo-capture__shutter {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.photo-capture__shutter:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.photo-capture__shutter-ring {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.35),
+    0 6px 18px rgba(0, 0, 0, 0.4);
+  transition: transform 120ms ease;
+}
+
+.photo-capture__shutter:not(:disabled):active .photo-capture__shutter-ring {
+  /* Tactile press feedback — the ring shrinks slightly on tap so
+   * the user sees the action register before the canvas → blob
+   * round-trip completes. */
+  transform: scale(0.94);
+}
+

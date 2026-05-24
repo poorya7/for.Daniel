@@ -1,0 +1,331 @@
+/* Wordmark lab — six full home-page mockups, horizontal swipe carousel.
+ * Scoped under `.wm-lab__*` so nothing leaks to the rest of the app. */
+
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Playfair+Display:wght@500;700&family=DM+Serif+Display&family=Instrument+Serif&family=Cormorant+Garamond:wght@500;700&display=swap");
+
+.wm-lab {
+  --lab-bg: #FAF6EE;
+  --lab-bg-card: #FFFFFF;
+  --lab-ink: #1F1A14;
+  --lab-ink-soft: #6F665B;
+  --lab-ink-faint: #B5AC9F;
+  --lab-accent: #0B7A95;
+  --lab-accent-bright: #00A8C8;
+  --lab-accent-soft: rgba(11, 122, 149, 0.10);
+  --lab-border: #ECE3D5;
+  --lab-shadow-card:
+    0 1px 2px rgba(60, 40, 20, 0.04),
+    0 6px 20px rgba(60, 40, 20, 0.06);
+
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  background: var(--lab-bg);
+  color: var(--lab-ink);
+  font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Indicator pill — pinned at top centre, floats over the slide. */
+.wm-lab__indicator {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--lab-border);
+  border-radius: 999px;
+  box-shadow: 0 2px 10px rgba(60, 40, 20, 0.06);
+  /* Indicator always renders in Outfit so the chip's voice is stable
+   * while the wordmark below shifts between fonts. */
+  font-family: "Outfit", -apple-system, sans-serif;
+}
+
+.wm-lab__indicator-count {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lab-ink-faint);
+}
+
+.wm-lab__indicator-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lab-ink);
+  letter-spacing: -0.005em;
+}
+
+/* Subtle bottom-edge swipe hint. Renders on every slide but fades
+ * after the user has moved beyond slide 0 (handled by :not()
+ * selectors would need JS; simplest: just leave it, it's tiny). */
+.wm-lab__hint {
+  position: absolute;
+  bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  font-family: "Outfit", -apple-system, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lab-ink-faint);
+  opacity: 0.7;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Horizontal track — one row of full-viewport-wide slides, native
+ * scroll-snap drives the swipe. iOS Safari supports this cleanly. */
+.wm-lab__track {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  /* Hide the scrollbar; the indicator + hint are the navigation cues. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.wm-lab__track::-webkit-scrollbar {
+  display: none;
+}
+
+.wm-lab__slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(60px, 10vh, 80px) 24px clamp(56px, 8vh, 72px);
+  /* Each slide is a self-contained mini home-page. */
+  box-sizing: border-box;
+}
+
+.wm-lab__cluster {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(20px, 5.5vh, 36px);
+}
+
+.wm-lab__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+}
+
+.wm-lab__wordmark {
+  margin: 0;
+  font-size: clamp(40px, 12vw, 72px);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  color: var(--lab-ink);
+  display: inline-flex;
+}
+
+.wm-lab__wordmark-capture {
+  font-weight: 500;
+}
+
+.wm-lab__wordmark-shark {
+  font-weight: 700;
+  background: linear-gradient(
+    180deg,
+    var(--lab-accent-bright) 0%,
+    var(--lab-accent) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.wm-lab__mascot {
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 408 / 204;
+  max-height: min(180px, 20vh);
+  margin-top: clamp(8px, 2.5vh, 18px);
+  background-color: var(--lab-accent);
+  -webkit-mask-image: url("/brand/shark-1.png?v=3");
+          mask-image: url("/brand/shark-1.png?v=3");
+  -webkit-mask-repeat: no-repeat;
+          mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+          mask-position: center;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  filter: drop-shadow(0 6px 14px rgba(14, 80, 110, 0.18));
+}
+
+.wm-lab__tagline-group {
+  margin-top: clamp(12px, 3vh, 24px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.wm-lab__tagline {
+  margin: 0;
+  font-size: clamp(16px, 5vw, 22px);
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--lab-ink);
+  letter-spacing: -0.015em;
+}
+
+.wm-lab__arrow {
+  color: var(--lab-ink-faint);
+  margin: 0 2px;
+  font-weight: 400;
+}
+
+.wm-lab__accent {
+  color: var(--lab-accent);
+}
+
+.wm-lab__subtagline {
+  margin: 0;
+  font-size: clamp(13px, 3.8vw, 16px);
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--lab-ink-soft);
+  letter-spacing: -0.005em;
+  /* Subtagline + buttons + footer link always render in Outfit so
+   * the user judges only the wordmark + tagline (the hero pair). */
+  font-family: "Outfit", -apple-system, sans-serif;
+}
+
+.wm-lab__modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 380px;
+  /* Body chrome stays in Outfit. */
+  font-family: "Outfit", -apple-system, sans-serif;
+}
+
+.wm-lab__mode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: clamp(12px, 3.5vh, 20px) 10px clamp(10px, 3vh, 18px);
+  background: var(--lab-bg-card);
+  border: 1px solid var(--lab-border);
+  border-radius: 18px;
+  box-shadow: var(--lab-shadow-card);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.wm-lab__mode-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--lab-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wm-lab__mode-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--lab-ink);
+  letter-spacing: -0.005em;
+}
+
+.wm-lab__sheet-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: "Outfit", -apple-system, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  text-decoration: none;
+  color: var(--lab-ink-soft);
+  letter-spacing: -0.005em;
+}
+
+.wm-lab__sheet-name {
+  color: var(--lab-accent);
+  font-weight: 500;
+}
+
+.wm-lab__sheet-arrow {
+  color: var(--lab-ink-faint);
+  font-size: 13px;
+}
+
+/* ─── Per-slide font assignment ────────────────────────────────
+ * Wordmark + tagline pick up the slide's font family so the user
+ * judges the FONT AS A SYSTEM, not as a single isolated word. */
+
+.wm-lab__slide--outfit .wm-lab__wordmark,
+.wm-lab__slide--outfit .wm-lab__tagline {
+  font-family: "Outfit", sans-serif;
+}
+
+.wm-lab__slide--fraunces .wm-lab__wordmark,
+.wm-lab__slide--fraunces .wm-lab__tagline {
+  font-family: "Fraunces", "Times New Roman", serif;
+  font-optical-sizing: auto;
+}
+
+.wm-lab__slide--playfair .wm-lab__wordmark,
+.wm-lab__slide--playfair .wm-lab__tagline {
+  font-family: "Playfair Display", "Times New Roman", serif;
+}
+
+.wm-lab__slide--dm-serif .wm-lab__wordmark,
+.wm-lab__slide--dm-serif .wm-lab__tagline {
+  font-family: "DM Serif Display", "Times New Roman", serif;
+}
+.wm-lab__slide--dm-serif .wm-lab__wordmark-capture,
+.wm-lab__slide--dm-serif .wm-lab__wordmark-shark,
+.wm-lab__slide--dm-serif .wm-lab__tagline {
+  font-weight: 400;
+}
+
+.wm-lab__slide--instrument .wm-lab__wordmark,
+.wm-lab__slide--instrument .wm-lab__tagline {
+  font-family: "Instrument Serif", "Times New Roman", serif;
+}
+.wm-lab__slide--instrument .wm-lab__wordmark-capture,
+.wm-lab__slide--instrument .wm-lab__wordmark-shark,
+.wm-lab__slide--instrument .wm-lab__tagline {
+  font-weight: 400;
+}
+
+.wm-lab__slide--cormorant .wm-lab__wordmark,
+.wm-lab__slide--cormorant .wm-lab__tagline {
+  font-family: "Cormorant Garamond", "Times New Roman", serif;
+}

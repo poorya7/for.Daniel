@@ -1,0 +1,94 @@
+# Secrets — NEVER commit
+.env
+.env.local
+.env.*.local
+secrets/
+*-sa.json
+*service-account*.json
+
+# Claude Code local settings
+.claude/
+
+# Audio listening test page — junctions + manifest, dev-only
+frontend/public/audio-test/
+
+# Vision corpus labeler — junction to ../corpus_labeler/, dev-only
+frontend/public/labeler/
+
+# STT bakeoff broker audio + ElevenLabs-generated dictations.
+# Treated as PII — never commit. Scripts + harness commit; audio stays local.
+docs/real time speech karaokee/samples/
+
+# Vision bake-off corpora + results — all derived/rebuildable, don't commit.
+# Co-located with the harness under docs/_tests/vision_bakeoff/.
+docs/_tests/vision_bakeoff/data/
+docs/_tests/vision_bakeoff/results/
+
+# Prompt-eval run cache — local research artefacts, regenerable.
+docs/_tests/prompt_eval/prompt_eval_results/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+/lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+env/
+ENV/
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+.cache/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Databases
+*.sqlite
+*.sqlite3
+*.db
+
+# Test / coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+coverage/
+.nyc_output/

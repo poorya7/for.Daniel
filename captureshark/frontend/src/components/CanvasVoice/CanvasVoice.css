@@ -1,0 +1,162 @@
+/*
+ * CanvasVoice — voice-capture surface for the no-panel canvas.
+ *
+ * Structural styles only. The pulse breath animation, the consent
+ * card entrance, and any phase-swap motion are deliberately omitted
+ * — they land in the post-migration polish pass. The dark stacked
+ * scrim from the legacy consent modal is gone; the consent card
+ * occupies the same hero slot as the mic UI so the surface never
+ * stacks.
+ */
+
+.canvas-voice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto;
+  padding: 0 24px;
+  gap: 18px;
+}
+
+.canvas-voice__eyebrow {
+  margin: 0;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--cream-text-subtle);
+}
+
+/* Stage — fixed-height slot that holds the pulse and the elapsed
+   counter. Reserves room so the layout doesn't shift between
+   requesting / recording states. */
+.canvas-voice__stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-height: 128px;
+  justify-content: center;
+}
+
+/* Pulse — solid dot at rest, faintly larger while recording. No
+   breath animation yet (parked for the motion pass); for now the
+   recording state just gets a slightly bolder fill so the user has
+   a static "yes, this is on" signal. */
+.canvas-voice__pulse {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(140, 122, 31, 0.12);
+  border: 1px solid var(--cream-text-hairline);
+}
+
+/* Recording state — solid espresso. Same brand brown the Extract
+   button uses, so the active recording dot reads as visually
+   connected to the action that ends it. Out of the red/rust family
+   entirely (per owner request), unambiguously salient against cream. */
+.canvas-voice__pulse--recording {
+  background: var(--cream-espresso);
+  border-color: var(--cream-espresso);
+}
+
+.canvas-voice__elapsed {
+  margin: 0;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 18px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--cream-text-muted);
+}
+
+.canvas-voice__hint {
+  margin: 0;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--cream-text-muted);
+  max-width: 320px;
+}
+
+.canvas-voice__primary {
+  width: 100%;
+  min-height: 56px;
+  border: none;
+  border-radius: 14px;
+  background: var(--cream-espresso);
+  color: var(--cream-text-on-dark);
+  font-family: "Outfit", var(--font-sans);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 120ms ease;
+}
+
+.canvas-voice__primary:active {
+  transform: scale(0.98);
+}
+
+.canvas-voice__primary:disabled {
+  background: var(--cream-text-hairline-strong);
+  color: var(--cream-text-on-dark);
+  opacity: 0.55;
+  cursor: default;
+}
+
+.canvas-voice__primary:disabled:active {
+  transform: none;
+}
+
+.canvas-voice__secondary {
+  background: transparent;
+  border: none;
+  color: var(--cream-text-muted);
+  font-family: "Outfit", var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
+  padding: 6px 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.canvas-voice__secondary:hover {
+  color: var(--cream-espresso);
+}
+
+/* Consent card — inline, cream, replaces the legacy dark scrim
+   modal. Lives in the same hero slot as the mic UI; no stacking,
+   no overlay, no backdrop blur. */
+.canvas-voice__consent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: center;
+}
+
+.canvas-voice__consent-title {
+  margin: 0;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--cream-espresso);
+  letter-spacing: -0.015em;
+}
+
+.canvas-voice__consent-body {
+  margin: 0 0 8px;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--cream-text-muted);
+  max-width: 320px;
+}

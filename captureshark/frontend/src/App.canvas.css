@@ -1,0 +1,1130 @@
+/*
+ * Canvas shell — the app root.
+ *
+ * Cream surface fills the viewport, ambient water mounts at the
+ * bottom and stays mounted across phase swaps. The fin is part of
+ * the same component but its visibility is gated by a class on the
+ * root (`.app-canvas[data-fin="hidden"]`) so we can toggle it
+ * without unmounting the water.
+ *
+ * Phase swaps are instant. The only animated transition in the app
+ * is the saving → saved cascade (scanner sweep + staggered fade-ins
+ * on the outcome surface).
+ */
+
+.app-canvas {
+  position: fixed;
+  inset: 0;
+  background: var(--cream-page-bg);
+  color: var(--cream-espresso);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  /* svh keeps the canvas stable when iOS Safari's bottom bar appears
+     / disappears mid-session. */
+  height: 100svh;
+  width: 100%;
+  /* Easings used by the saving → saved cascade only.
+     --water is the calm settle used for the scanner sweep itself;
+     --soft is the gentle arrival used by the per-element fade-ins. */
+  --water: cubic-bezier(0.2, 0.82, 0.22, 1);
+  --soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Backdrop catcher — full-bleed transparent layer behind every content
+   panel. Inactive panels are pointer-events:none (per phase, see below),
+   so their footprint falls through to this element. Active panels
+   absorb their own taps and never reach the backdrop. The result: any
+   tap that lands on bare cream routes to the App-level backdrop-tap
+   handler, every other tap routes to whichever live control it landed
+   on. No target / currentTarget heuristic needed. */
+.app-canvas__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: transparent;
+  cursor: default;
+}
+
+/* Water layer — fixed bottom anchor. Variant 3 ("Hero top") locks the
+   water at the same vertical position regardless of phase. The water
+   container is intentionally pushed a touch BELOW the visible bottom
+   edge so the ripples read as the floor of the page (ambient,
+   page-owned), not a footer attached to whichever panel is on screen. */
+.app-canvas__water {
+  position: absolute;
+  left: 50%;
+  bottom: -24px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Fin visibility — controlled at the root so the SharkLoader instance
+   itself is never remounted. Step 1 starts in "hidden" — only the
+   ripples are visible until a real loading phase wires fin on. */
+.app-canvas[data-fin="hidden"] .shark-loader__fin-clip {
+  visibility: hidden;
+}
+
+/* ---- Home cluster — wordmark + tagline + three mode buttons ----
+   Vertically anchored in the upper region so it sits comfortably
+   above the water without competing with the ripples for the eye.
+   Step 2 renders this static — no tap handlers yet. */
+
+.app-canvas__home {
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 360px;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  z-index: 20;
+}
+
+.app-canvas[data-phase="text-input"] .app-canvas__home,
+.app-canvas[data-phase="voice"] .app-canvas__home,
+.app-canvas[data-phase="photo"] .app-canvas__home,
+.app-canvas[data-phase="photo-review"] .app-canvas__home,
+.app-canvas[data-phase="photo-row-edit"] .app-canvas__home,
+.app-canvas[data-phase="loading"] .app-canvas__home,
+.app-canvas[data-phase="review"] .app-canvas__home,
+.app-canvas[data-phase="saving"] .app-canvas__home,
+.app-canvas[data-phase="saved"] .app-canvas__home {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.app-canvas__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.app-canvas__wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0;
+  font-family: "Outfit", var(--font-sans);
+  font-weight: 200;
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: -0.025em;
+}
+
+.app-canvas__wordmark-capture {
+  color: var(--cream-espresso);
+  font-weight: 200;
+}
+
+.app-canvas__wordmark-shark {
+  color: var(--cream-espresso);
+  font-weight: 500;
+}
+
+.app-canvas__tagline-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.app-canvas__tagline {
+  margin: 0;
+  font-size: 19px;
+  color: var(--cream-text-muted);
+  letter-spacing: -0.005em;
+}
+
+.app-canvas__tagline-accent {
+  color: var(--cream-espresso);
+  font-weight: 500;
+}
+
+.app-canvas__subtagline {
+  margin: 0;
+  font-size: 14px;
+  color: var(--cream-text-faint);
+}
+
+.app-canvas__modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  width: 100%;
+}
+
+.app-canvas__mode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 96px;
+  padding: 14px 10px;
+  border-radius: 18px;
+  border: 1px solid var(--cream-border-tan);
+  background: linear-gradient(180deg, #FFFEFB 0%, var(--cream-rows-bg) 100%);
+  box-shadow:
+    0 1px 2px var(--cream-shadow-sm),
+    0 6px 20px var(--cream-shadow-md);
+  color: var(--cream-espresso);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-canvas__mode-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cream-espresso);
+}
+
+/* ---- Text input phase (variant 3 "Hero top") ----
+   Lead question top, textarea, Extract button. Sits in the same upper
+   region the home cluster occupies — same anchor, same width — so the
+   two swap in place without any visible position shift. */
+
+.app-canvas__input {
+  position: absolute;
+  top: 14%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 380px;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.app-canvas[data-phase="text-input"] .app-canvas__input {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.app-canvas__lead {
+  margin: 0 0 20px;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cream-text-muted);
+}
+
+.app-canvas__textarea {
+  width: 100%;
+  min-height: 140px;
+  resize: none;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--cream-espresso);
+  font-family: "Outfit", var(--font-sans);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.5;
+  border: 1px solid var(--cream-text-hairline);
+  border-radius: 14px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.app-canvas__textarea:focus {
+  border-color: var(--cream-text-hairline-strong);
+}
+
+.app-canvas__textarea::placeholder {
+  color: var(--cream-text-faint);
+}
+
+.app-canvas__extract {
+  margin-top: 14px;
+  width: 100%;
+  min-height: 56px;
+  border: none;
+  border-radius: 14px;
+  background: var(--cream-espresso);
+  color: var(--cream-text-on-dark);
+  font-family: "Outfit", var(--font-sans);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Empty-textarea / in-flight guard — calmer surface so the button
+   reads as "not yet" without feeling broken. Cursor falls back to
+   default so a hover (desktop / external pointer) reads as
+   not-tappable. */
+.app-canvas__extract:disabled {
+  background: var(--cream-text-hairline-strong);
+  color: var(--cream-text-on-dark);
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Step 5b — plain-English inline error after a failed extraction.
+   Sits between the textarea and the Extract button so the user sees
+   both the message and the path to retry. Calm warm-amber tone — the
+   same vocabulary the AGENT badge uses, paired with a muted weight
+   so it reads as guidance, not alarm. */
+.app-canvas__extract-error {
+  margin: 12px 0 0;
+  text-align: center;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--cream-olive-gold);
+}
+
+/* When phase=loading, the input panel disappears (instant swap). */
+.app-canvas[data-phase="loading"] .app-canvas__input {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---- Loading phase (eyebrow + plain-English subtext) ----
+   Sits in the same upper region as the input panel, centred. The
+   actual shark loader (fin + water) lives in `.app-canvas__water`
+   below — this panel is the copy that pairs with it. */
+
+.app-canvas__loader {
+  position: absolute;
+  top: 26%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 380px;
+  padding: 0 24px;
+  text-align: center;
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.app-canvas[data-phase="loading"] .app-canvas__loader {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* In phases past loading the loader copy is gone (instant swap).
+   Already opacity 0 by default; this just guards against future
+   phase names that might land here. */
+.app-canvas[data-phase="review"] .app-canvas__loader {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.app-canvas__eyebrow {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--cream-text-subtle);
+  text-transform: uppercase;
+}
+
+.app-canvas__subtext {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--cream-espresso);
+  letter-spacing: -0.005em;
+}
+
+/* ---- Review phase. Heading: EXTRACTED eyebrow, first name,
+   budget. 3-page swipe pager (Name/Phone/Email/Agent? · Intent/
+   Timeline/Financing/Budget · Area/Follow-up/Notes), show-original
+   disclosure, dots + counter, Save + Discard at the bottom. */
+
+.app-canvas__review {
+  position: absolute;
+  top: 2%;
+  /* Fixed bottom so the section has a defined extent. The paginated
+     group inside is flex:1 and absorbs the expansion when the
+     original-note disclosure opens, so Save + Discard stay anchored.
+     Bottom value leaves clear cream between the panel and the water
+     — water reads as page-floor, not panel-footer. */
+  bottom: 200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 400px;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+  min-height: 0;
+}
+
+.app-canvas[data-phase="review"] .app-canvas__review,
+.app-canvas[data-phase="photo-row-edit"] .app-canvas__review {
+  opacity: 1;
+  /* Wrapper stays pointer-events:none even when visible — its padding
+     gutter is cream, not card. The inner .lead-review-card gets clicks
+     via its default pointer-events:auto. Stray taps in the gutter pass
+     through to the backdrop catcher and raise the confirm Dialog. */
+}
+
+/* Internals of the review surface (heading, rows, edit panel chrome)
+   live in LeadReviewCard.css under .lead-review-card__* now. App.canvas
+   only positions the SLOT (.app-canvas__review above); the card draws
+   itself inside. */
+
+/* Primary Save CTA and quiet Discard link below. */
+.app-canvas__save {
+  margin-top: 18px;
+  width: 100%;
+  min-height: 56px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 14px;
+  background: var(--cream-espresso);
+  color: var(--cream-text-on-dark);
+  font-family: "Outfit", var(--font-sans);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-canvas__discard {
+  align-self: center;
+  margin-top: 8px;
+  background: transparent;
+  border: none;
+  color: var(--cream-text-muted);
+  font-family: "Outfit", var(--font-sans);
+  font-size: 16px;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.app-canvas__discard:hover {
+  color: var(--cream-espresso);
+}
+
+@media (max-height: 700px) {
+  .app-canvas__home {
+    top: 8%;
+    gap: 28px;
+  }
+  .app-canvas__wordmark {
+    font-size: 30px;
+  }
+  .app-canvas__mode {
+    min-height: 80px;
+  }
+  .app-canvas__input {
+    top: 9%;
+  }
+  .app-canvas__lead {
+    font-size: 20px;
+    margin-bottom: 14px;
+  }
+  .app-canvas__textarea {
+    min-height: 110px;
+  }
+  .app-canvas__loader {
+    top: 20%;
+  }
+  .app-canvas__review {
+    top: 2%;
+    gap: 8px;
+  }
+  /* Card-internal short-viewport tweaks (heading name / budget /
+     row padding) live in LeadReviewCard.css now. */
+}
+
+/* ============================================================
+ * Voice phase wrapper — anchors CanvasVoice on the canvas
+ *
+ * The component owns its own styling (`canvas-voice__*`); this
+ * wrapper just positions it in the same hero slot the input panel
+ * uses so the surface lives in a consistent place across phases.
+ * ============================================================ */
+
+.app-canvas__voice-section {
+  position: absolute;
+  top: 14%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 380px;
+  padding: 0 24px;
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.app-canvas[data-phase="voice"] .app-canvas__voice-section {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ============================================================
+ * Saving / saved phases — the only animated transition in the app.
+ *
+ * The .app-canvas__outcome--done modifier (driven by data-phase=
+ * "saved" on the root) triggers a scanner sweep across the surface
+ * plus a staggered fade-in cascade on the per-element children:
+ *   scanner sweep — 1500ms `--water` @ 80ms delay
+ *   check         —  720ms `--soft`  @ 160ms delay
+ *   verb          —  760ms `--soft`  @ 510ms delay
+ *   line          —  760ms `--soft`  @ 770ms delay
+ *   primary       —  780ms `--soft`  @ 1010ms delay
+ *   link          —  780ms `--soft`  @ 1120ms delay
+ * The saving copy exits via the `scanner-out` keyframe staggered
+ * top → bottom (eyebrow 0ms, subhead 80ms, phrase 200ms — all 520ms
+ * ease-in) so the saving content morphs out while the saved cascade
+ * morphs in, no snap-disappear in between.
+ * ============================================================ */
+
+/* Hide the review section during saving / saved (the outcome surface
+   takes over the canvas). */
+.app-canvas[data-phase="saving"] .app-canvas__review,
+.app-canvas[data-phase="saved"] .app-canvas__review {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---- Saving copy — eyebrow + name subhead + cycling phrase ----
+   Layered above the water, centred under the fin. Reuses the
+   loader's vertical anchor so the user reads the saving moment in
+   the same place they read the extracting moment. */
+
+.app-canvas__saving {
+  position: absolute;
+  top: 26%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 380px;
+  padding: 0 24px;
+  text-align: center;
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.app-canvas[data-phase="saving"] .app-canvas__saving {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* During the saved phase the saving copy stays mounted briefly so the
+   staggered scanner-out cascade can play. Opacity stays at 1 here;
+   each child element runs its own scanner-out animation that ends at
+   opacity 0 (the `both` fill keeps the end state). After the cascade
+   ends the saving copy is invisible regardless of this rule. */
+.app-canvas[data-phase="saved"] .app-canvas__saving {
+  opacity: 1;
+  pointer-events: none;
+}
+
+/* Saving subhead — the lead's first name. Sits between the eyebrow
+   and the cycling phrase so the user reads "this is MY lead being
+   saved." Quiet espresso weight, no halo. */
+.app-canvas__saving-subhead {
+  margin: 6px 0 10px;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  color: var(--cream-espresso);
+}
+
+/* Staggered scanner-out cascade — fires on entering the saved phase
+   so the saving copy fades out top → bottom while the saved cascade
+   fades in underneath. 520ms ease-in; delays 0 / 80 / 200ms give the
+   cascade a top-to-bottom shape that mirrors the saved-side
+   scanner sweep. */
+.app-canvas[data-phase="saved"] .app-canvas__saving .app-canvas__eyebrow {
+  animation: scanner-out 520ms ease-in both 0ms;
+}
+.app-canvas[data-phase="saved"] .app-canvas__saving-subhead {
+  animation: scanner-out 520ms ease-in both 80ms;
+}
+.app-canvas[data-phase="saved"] .app-canvas__saving .app-canvas__subtext {
+  animation: scanner-out 520ms ease-in both 200ms;
+}
+
+/* ---- Save error — calm inline line under the Save button ----
+   Same vocabulary as the extract error pill but anchored under the
+   Save CTA so the path-to-retry reads as obvious. */
+.app-canvas__save-error {
+  margin: 8px 0 0;
+  flex-shrink: 0;
+  text-align: center;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--cream-olive-gold);
+}
+
+/* ---- Saved / outcome surface — the cascade landing zone ----
+   The outcome DOM is always mounted but invisible by default. The
+   .app-canvas__outcome--done modifier (toggled by data-phase="saved"
+   indirectly via the class on the section element) fires the scanner
+   sweep plus each per-element fade-in. Cream palette pre-applied. */
+
+.app-canvas__outcome {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 380px;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+  z-index: 21;
+  pointer-events: none;
+  /* `position: relative` semantics — children that absolutely position
+     against the outcome (the scanner line) need this as their
+     containing block. The outer absolute (relative to .app-canvas)
+     still applies because the outcome is already a positioned
+     element. */
+}
+
+.app-canvas__outcome--done {
+  pointer-events: auto;
+}
+
+/* Scanner line — thin dark-olive gradient that sweeps top → bottom
+   while the saved cascade fires. Anchored to the centre of the
+   outcome so the keyframe's translateY range (-130px → 155px) lands
+   it crossing every slot. */
+.app-canvas__outcome-scanner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(64, 78, 34, 0.45),
+    transparent
+  );
+  opacity: 0;
+  pointer-events: none;
+  z-index: 8;
+}
+
+.app-canvas__outcome--done .app-canvas__outcome-scanner {
+  animation: scanner-sweep 1500ms var(--water) both 80ms;
+}
+
+/* Indicator slot — fixed-size square hosting the green check. */
+.app-canvas__outcome-indicator {
+  display: grid;
+  grid-template-areas: "stack";
+  place-items: center;
+  width: 72px;
+  height: 72px;
+}
+
+.app-canvas__outcome-check {
+  grid-area: stack;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(64, 78, 34, 0.16);
+  color: var(--cream-dark-olive);
+  font-size: 36px;
+  line-height: 64px;
+  text-align: center;
+  box-shadow: 0 8px 32px -8px rgba(64, 78, 34, 0.45);
+  opacity: 0;
+}
+
+.app-canvas__outcome--done .app-canvas__outcome-check {
+  animation: scanner-in 720ms var(--soft) both 160ms;
+}
+
+/* Verb slot — "Saved". Reserves baseline height so layout doesn't
+   shift while the cascade is firing. */
+.app-canvas__outcome-verb-area {
+  margin: 0;
+  display: grid;
+  grid-template-areas: "stack";
+  place-items: center;
+  min-height: 44px;
+}
+
+.app-canvas__outcome-verb {
+  grid-area: stack;
+  font-family: "Outfit", var(--font-sans);
+  font-weight: 500;
+  font-size: 44px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--cream-espresso);
+  text-shadow: 0 0 26px rgba(140, 122, 31, 0.22);
+  opacity: 0;
+}
+
+.app-canvas__outcome--done .app-canvas__outcome-verb {
+  animation: scanner-in 760ms var(--soft) both 510ms;
+}
+
+/* Line slot — "Name from Area" (or fallback) line under the verb. */
+.app-canvas__outcome-line-area {
+  display: grid;
+  grid-template-areas: "stack";
+  place-items: center;
+  width: 100%;
+  min-height: 24px;
+}
+
+.app-canvas__outcome-line {
+  grid-area: stack;
+  margin: 0;
+  font-family: "Outfit", var(--font-sans);
+  font-weight: 500;
+  font-size: 17px;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  color: var(--cream-text-muted);
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  max-width: 100%;
+  opacity: 0;
+}
+
+.app-canvas__outcome--done .app-canvas__outcome-line {
+  animation: scanner-in 760ms var(--soft) both 770ms;
+}
+
+/* Connector copy (e.g. " from ") wrapped in its own span so the
+   surrounding spaces in the data string survive flex layout. */
+.app-canvas__outcome-connector {
+  white-space: pre;
+}
+
+.app-canvas__outcome-name {
+  color: var(--cream-espresso);
+  font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-canvas__outcome-area {
+  color: var(--cream-olive-gold);
+  font-weight: 500;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Action stack — primary CTA + secondary link. Both fade in last in
+   the cascade. */
+.app-canvas__outcome-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 94px;
+  pointer-events: none;
+}
+
+.app-canvas__outcome--done .app-canvas__outcome-actions {
+  pointer-events: auto;
+}
+
+.app-canvas__outcome-primary {
+  width: 100%;
+  min-height: 56px;
+  padding: 0 22px;
+  border: none;
+  border-radius: 14px;
+  background: var(--cream-espresso);
+  color: var(--cream-text-on-dark);
+  font-family: "Outfit", var(--font-sans);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  opacity: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-canvas__outcome--done .app-canvas__outcome-primary {
+  animation: scanner-in 780ms var(--soft) both 1010ms;
+}
+
+.app-canvas__outcome-link {
+  color: var(--cream-text-muted);
+  font-family: "Outfit", var(--font-sans);
+  font-size: 15px;
+  padding: 6px 14px;
+  text-decoration: none;
+  opacity: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-canvas__outcome--done .app-canvas__outcome-link {
+  animation: scanner-in 780ms var(--soft) both 1120ms;
+}
+
+.app-canvas__outcome-link:hover {
+  color: var(--cream-espresso);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-canvas__outcome--done .app-canvas__outcome-scanner,
+  .app-canvas__outcome--done .app-canvas__outcome-check,
+  .app-canvas__outcome--done .app-canvas__outcome-verb,
+  .app-canvas__outcome--done .app-canvas__outcome-line,
+  .app-canvas__outcome--done .app-canvas__outcome-primary,
+  .app-canvas__outcome--done .app-canvas__outcome-link,
+  .app-canvas[data-phase="saved"] .app-canvas__saving .app-canvas__eyebrow,
+  .app-canvas[data-phase="saved"] .app-canvas__saving-subhead,
+  .app-canvas[data-phase="saved"] .app-canvas__saving .app-canvas__subtext {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
+}
+
+/* Scanner keyframes — translateY range tuned to the outcome region
+   (~285px high) so the sweep line crosses every slot top → bottom. */
+@keyframes scanner-sweep {
+  0%   { opacity: 0; transform: translateY(-130px); }
+  15%,
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(155px); }
+}
+
+@keyframes scanner-out {
+  to {
+    opacity: 0;
+    filter: blur(5px);
+    transform: scale(0.985);
+  }
+}
+
+@keyframes scanner-in {
+  from {
+    opacity: 0;
+    filter: blur(5px);
+    transform: scale(1.015);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+
+/* Photo-summary section — the multi-row list shown after a photo is
+   read. Positions inside the canvas root the same way .app-canvas__review
+   does (centered, capped width, anchored top with a clear cream gap to
+   the water). The PhotoSummaryCard inside brings its own internal
+   styling — these rules only handle layout slot + visibility. Visual
+   retint to cream is a follow-up polish slice. */
+.app-canvas__photo-summary {
+  position: absolute;
+  top: 2%;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 420px;
+  padding: 0 24px;
+  z-index: 20;
+  overflow-y: auto;
+  /* Wrapper is a layout slot, not a click target — its padding gutter
+     reads as cream around the card, so taps there belong to the
+     backdrop dismiss, not the section. The inner .review-card +
+     .app-canvas__sign-in keep default pointer-events:auto and absorb
+     their own clicks. */
+  pointer-events: none;
+}
+
+.app-canvas__photo-summary > * {
+  pointer-events: auto;
+}
+
+/* Sign-in panel — appears in place of the Save/Discard cluster when
+   the user taps Save while signed-out or hits a 401 mid-save. The
+   panel component (features/auth/SignInPanel) ships with dark-theme
+   styles in global.css; these overrides retint the surface for the
+   cream canvas. The .primary-action + .link-action inside it are
+   already cream-themed globally, so we only need to retune the panel
+   shell + body text colors here. */
+.app-canvas__sign-in {
+  margin-top: var(--space-3);
+  width: 100%;
+}
+
+.app-canvas__sign-in .sign-in-panel {
+  background: var(--cream-rows-bg);
+  border: 1px solid var(--cream-border-tan);
+}
+
+.app-canvas__sign-in .sign-in-panel h3 {
+  color: var(--cream-espresso);
+}
+
+.app-canvas__sign-in .sign-in-lead {
+  color: var(--cream-espresso);
+}
+
+.app-canvas__sign-in .sign-in-prep {
+  color: var(--cream-text-muted);
+  border-left-color: var(--cream-olive-gold);
+}
+
+.app-canvas__sign-in .sign-in-prep strong {
+  color: var(--cream-espresso);
+}
+
+/* ========================================================================
+ * Photo summary — cream retint
+ *
+ * PhotoSummaryCard ships with a dark-slate palette via its own .css
+ * (white text on a dark surface). On the cream canvas we override
+ * those tokens INSIDE the photo section wrapper so the surface reads
+ * warm-light instead of dark. Same visual hierarchy — sage ✓ for
+ * high-confidence rows, calm amber ! for needs-look — just tuned so
+ * they sit cleanly on cream.
+ * ====================================================================== */
+
+.app-canvas__photo-summary .review-card {
+  background: var(--cream-page-bg);
+  color: var(--cream-espresso);
+}
+
+.app-canvas__photo-summary .review-card h2 {
+  color: var(--cream-espresso);
+}
+
+/* The summary title body — the canonical capture-heading__name paints
+   the whole cluster in cyan; here we restore cream-espresso and accent
+   only the digit count + noun separately. */
+.app-canvas__photo-summary .photo-summary__title-body {
+  color: var(--cream-espresso);
+}
+
+.app-canvas__photo-summary .photo-summary__title-count {
+  color: var(--cream-espresso);
+}
+
+.app-canvas__photo-summary .photo-summary__title-noun {
+  color: var(--cream-text-muted);
+}
+
+.app-canvas__photo-summary .photo-summary__sanity {
+  color: var(--cream-text-muted);
+}
+
+/* The sanity-line accent counts. Sage stays (high confidence reads as
+   green universally), amber stays (low confidence stays warm-yellow). */
+.app-canvas__photo-summary .photo-summary__sanity-good {
+  color: var(--cream-dark-olive);
+}
+
+.app-canvas__photo-summary .photo-summary__sanity-warn {
+  color: var(--cream-olive-gold);
+}
+
+/* Rows container — cream-tinted background with the warm hairline
+   scrollbar so it sits cleanly inside the surface. */
+.app-canvas__photo-summary .review-fields.photo-summary__rows {
+  background: var(--cream-rows-bg);
+  border: 1px solid var(--cream-border-tan);
+  border-radius: var(--radius-md);
+  scrollbar-color: var(--cream-text-hairline) transparent;
+}
+
+.app-canvas__photo-summary .review-fields.photo-summary__rows::-webkit-scrollbar-thumb {
+  background: var(--cream-text-hairline);
+}
+
+/* Per-row strip — outer container is now a plain <div> (no native
+   button chrome to reset). The inner tap-to-edit and remove-X buttons
+   are real <button>s that need the reset because color-scheme: dark
+   at :root would otherwise paint them with native slate chrome. */
+.app-canvas__photo-summary .review-row.photo-summary__row {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border-bottom: 1px solid var(--cream-divider);
+}
+
+.app-canvas__photo-summary .photo-summary__row-edit {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  align-items: center;
+  column-gap: 8px;
+  padding: 10px 8px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--cream-espresso);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) {
+  .app-canvas__photo-summary .photo-summary__row-edit:hover:not(:disabled) {
+    background: rgba(31, 26, 20, 0.03);
+  }
+}
+
+.app-canvas__photo-summary .photo-summary__row-edit:active:not(:disabled) {
+  background: rgba(31, 26, 20, 0.05);
+}
+
+.app-canvas__photo-summary .photo-summary__row-edit:focus-visible {
+  outline: 2px solid var(--cream-olive-gold);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+/* X / remove button — quiet espresso glyph on cream, lights up on
+   tap with a warm hairline wash. */
+.app-canvas__photo-summary .photo-summary__row-remove {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--cream-text-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 999px;
+}
+
+.app-canvas__photo-summary .photo-summary__row-remove svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (hover: hover) {
+  .app-canvas__photo-summary .photo-summary__row-remove:hover:not(:disabled) {
+    background: rgba(31, 26, 20, 0.06);
+    color: var(--cream-espresso);
+  }
+}
+
+.app-canvas__photo-summary .photo-summary__row-remove:active:not(:disabled) {
+  background: rgba(31, 26, 20, 0.10);
+}
+
+.app-canvas__photo-summary .photo-summary__row-remove:focus-visible {
+  outline: 2px solid var(--cream-olive-gold);
+  outline-offset: 0;
+}
+
+.app-canvas__photo-summary .photo-summary__row-remove:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.app-canvas__photo-summary .photo-summary__row-name {
+  color: var(--cream-espresso);
+}
+
+.app-canvas__photo-summary .photo-summary__row-contact {
+  color: var(--cream-text-muted);
+}
+
+/* Indicator glyphs — sage ✓ retuned to dark-olive on cream-tinted bg,
+   amber ! retuned to olive-gold on warm-tinted bg. Glow effect drops
+   since the cream surface doesn't have the dark depth that made
+   text-shadow glows work. */
+.app-canvas__photo-summary .photo-summary__indicator--good {
+  color: var(--cream-dark-olive);
+  background: rgba(64, 78, 34, 0.10);
+  text-shadow: none;
+}
+
+.app-canvas__photo-summary .photo-summary__indicator--needs-look {
+  color: var(--cream-olive-gold);
+  background: rgba(140, 122, 31, 0.12);
+}
+
+/* Retake — text-only secondary action. Save is the only dominant
+   button on the surface; Retake sits as a quiet text link in the
+   same family as Discard so the eye lands on Save first. */
+.app-canvas__photo-summary .photo-summary__retake {
+  background: transparent;
+  color: var(--cream-text-muted);
+  min-height: 0;
+  padding: 6px 10px;
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  align-self: center;
+  width: auto;
+}
+
+@media (hover: hover) {
+  .app-canvas__photo-summary .photo-summary__retake:hover:not(:disabled) {
+    background: transparent;
+    color: var(--cream-espresso);
+  }
+}
+
+.app-canvas__photo-summary .photo-summary__retake:active:not(:disabled) {
+  background: transparent;
+  opacity: 0.6;
+  transform: none;
+}
+
+.app-canvas__photo-summary .photo-summary__retake:focus-visible {
+  outline: 2px solid var(--cream-olive-gold);
+  outline-offset: 2px;
+  border-radius: 6px;
+}

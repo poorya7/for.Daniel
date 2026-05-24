@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calm Shark Fin Loader</title>
+    <style>
+        /* 1. THE CORE BACKGROUND 
+           A deep, seamless dark ocean-toned canvas. */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #080d16; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .loader-viewport {
+            position: relative;
+            width: 100vw;
+            height: 300px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 2. GLOBAL WATER SURFACE (Stationary)
+           This line stays fixed to anchor the horizon. It fades out seamlessly 
+           at the left and right edges using a linear gradient, meaning no harsh edges. */
+        .water-line {
+            position: absolute;
+            width: 80%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 140, 186, 0.15) 20%, rgba(0, 140, 186, 0.15) 80%, transparent);
+            top: 60%;
+        }
+
+        /* 3. THE MOVING ASSEMBLY 
+           This container glides across the screen. Crucially, it has NO background color, 
+           no padding glows, and no radial gradients. It is 100% transparent, entirely 
+           eliminating the "moving tube" artifact. */
+        .swim-container {
+            position: absolute;
+            top: 60%;
+            left: -120px;
+            transform: translateY(-100%); /* Keeps the bottom of the fin resting on the water line */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: cruise 14s infinite linear;
+        }
+
+        /* 4. THE SHARK FIN
+           A mathematically smooth vector path that scales perfectly. It features a separate 
+           animation to make it dip and pitch gently as if moving through physical water. */
+        .shark-fin {
+            width: 75px;
+            height: 65px;
+            fill: #111a26;
+            /* A crisp drop shadow that blends into the dark background naturally */
+            filter: drop-shadow(0 4px 4px rgba(0,0,0,0.6));
+            animation: gentle-bob 3.5s infinite ease-in-out;
+            transform-origin: bottom center;
+        }
+
+        /* 5. PURE WAKE RIPPLES
+           These elements travel with the fin, but use transparent centers. Only the 
+           bottom border has color. They expand outward and fade cleanly to opacity: 0. */
+        .wake-ripple {
+            position: absolute;
+            bottom: -4px;
+            width: 90px;
+            height: 10px;
+            border-radius: 50%;
+            border: 1px solid transparent;
+            border-bottom: 2px solid rgba(0, 140, 186, 0.35);
+            opacity: 0;
+            transform: scale(0.5);
+            animation: ripple-fade 2.5s infinite ease-out;
+        }
+
+        /* Staggering the ripples so they emit continuously behind the fin */
+        .wake-ripple:nth-child(2) {
+            animation-delay: 0.8s;
+            width: 75px;
+        }
+
+        .wake-ripple:nth-child(3) {
+            animation-delay: 1.6s;
+            width: 60px;
+        }
+
+        /* --- ANIMATION KEYFRAMES --- */
+        
+        /* Continuous horizontal motion across the viewport */
+        @keyframes cruise {
+            0% {
+                left: -120px;
+            }
+            100% {
+                left: 100vw;
+            }
+        }
+
+        /* Calm, rhythmic vertical dipping and slight tilting */
+        @keyframes gentle-bob {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            50% {
+                transform: translateY(5px) rotate(-2.5deg); 
+            }
+        }
+
+        /* Ripples emerge tight to the fin, trail slightly backward, and cleanly dissolve */
+        @keyframes ripple-fade {
+            0% {
+                transform: scale(0.3) translateX(15px);
+                opacity: 0;
+            }
+            25% {
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1.5) translateX(45px); /* Moves backward relative to the fin */
+                opacity: 0;
+            }
+        }
+
+        /* Ambient Loading Text */
+        .loading-text {
+            position: absolute;
+            bottom: 30px;
+            color: rgba(0, 140, 186, 0.3);
+            font-size: 11px;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            text-align: center;
+            width: 100%;
+            animation: pulse 2.5s infinite alternate ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.4; }
+            100% { opacity: 0.9; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="loader-viewport">
+        <div class="water-line"></div>
+
+        <div class="swim-container">
+            <svg class="shark-fin" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15,95 C35,90 48,70 56,35 C61,12 66,5 74,10 C72,25 74,55 90,95 Z" />
+            </svg>
+            
+            <div class="wake-ripple"></div>
+            <div class="wake-ripple"></div>
+            <div class="wake-ripple"></div>
+        </div>
+
+        <div class="loading-text">Loading Project</div>
+    </div>
+
+</body>
+</html>

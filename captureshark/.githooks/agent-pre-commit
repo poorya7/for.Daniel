@@ -1,0 +1,31 @@
+#!/bin/sh
+# Pre-commit hook wrapper — invokes the Python logic via whichever
+# Python launcher exists on PATH.
+#
+# Why a wrapper: on Windows git's MSYS bash, `python3` often resolves
+# to a Microsoft Store stub that just opens the install page. Trying
+# python -> py -> python3 in that order picks up a real interpreter
+# on Windows, macOS, and Linux without bothering the agent about it.
+#
+# The actual hook logic lives next to this file in `agent-pre-commit.py`.
+
+set -e
+
+# Find the repo root so we can locate the Python script regardless of
+# where `git commit` was invoked from.
+root=$(git rev-parse --show-toplevel)
+script="$root/.githooks/agent-pre-commit.py"
+
+if [ ! -f "$script" ]; then
+  echo "pre-commit hook: $script is missing." >&2
+  exit 1
+fi
+
+for candidate in python py python3; do
+  if command -v "$candidate" >/dev/null 2>&1; then
+    exec "$candidate" "$script" "$@"
+  fi
+done
+
+echo "pre-commit hook: no Python interpreter on PATH (tried python, py, python3)." >&2
+exit 1

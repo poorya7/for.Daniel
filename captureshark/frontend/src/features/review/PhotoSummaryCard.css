@@ -1,0 +1,192 @@
+/**
+ * PhotoSummaryCard styles — photo-specific additions on top of the
+ * shared review surface vocabulary (`review-card`, `review-fields`,
+ * `review-row`, `primary-action`, `link-action`, `capture-heading__*`).
+ *
+ * Adjustments here cover what's photo-specific:
+ *   - heading body lets the count + noun read distinctly
+ *   - row grid template (indicator + body, no edit-pencil column)
+ *   - per-row confidence indicator (sage green ✓ / calm amber !)
+ *   - Retake button — soft-tinted twin of the primary CTA so it
+ *     reads as a button but steps down from Save All visually
+ *
+ * Canvas-side cream retint lives in App.canvas.css scoped under
+ * `.app-canvas__photo-summary`.
+ */
+
+/* Title cluster — small spacer so the sanity line below doesn't kiss
+   the body text. */
+.photo-summary__title {
+  margin-bottom: 4px;
+}
+
+/* The canonical `.capture-heading__name` paints everything inside
+   it cyan. For the photo title we want the COUNT in cyan but the
+   noun ("leads") in white so the eye lands on the number — same
+   information hierarchy the review-card uses for name + budget
+   (the "important word" is the brand-bright accent). The base
+   `.capture-heading__name` typography (Outfit-light 30px,
+   tracking, line-height) stays. */
+.photo-summary__title-body {
+  /* Reset the inherited cyan so child spans control their own
+     colour. Width/typography stay from the parent. */
+  color: var(--color-text);
+}
+
+.photo-summary__title-count {
+  color: var(--color-brand-bright);
+}
+
+.photo-summary__title-noun {
+  color: var(--color-text);
+  /* Slightly lighter weight so the noun reads as the supporting
+     half of the cluster, not competing with the cyan count. */
+  font-weight: 300;
+}
+
+/* Sanity-check line under the heading ("3 look good · 1 needs a
+   quick look"). Same muted treatment the `.review-original`
+   summary uses — calm, low-emphasis, supports the title. */
+.photo-summary__sanity {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  letter-spacing: 0.005em;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* Accent the counts in the sanity line so the eye catches "how
+   many need a look" without reading the whole sentence. Same
+   tokens as the per-row indicators: sage for good, amber for
+   needs-look. Slight bump in weight so the digit pops without
+   needing a bigger size. */
+.photo-summary__sanity-good {
+  color: #bbf7d0;
+  font-weight: 600;
+}
+
+.photo-summary__sanity-warn {
+  color: #ffc45c;
+  font-weight: 600;
+}
+
+/* Indicator slot — first grid column, holds the circular glyph. */
+.photo-summary__row-indicator-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Body slot — second grid column, stacks name + contact. */
+.photo-summary__row-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.photo-summary__row-name {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-text);
+  letter-spacing: -0.005em;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.photo-summary__row-contact {
+  font-size: 13.5px;
+  color: var(--color-text-muted);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Indicator glyph — 24px circle with the existing colour tokens.
+   Sage green = `#bbf7d0` (same as `.outcome__check`). Amber =
+   `#ffc45c` (same as `.review-confidence--check`). */
+.photo-summary__indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  font-family: "Outfit", var(--font-sans);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.photo-summary__indicator--good {
+  color: #bbf7d0;
+  background: rgba(187, 247, 208, 0.14);
+  text-shadow: 0 0 12px rgba(187, 247, 208, 0.22);
+}
+
+.photo-summary__indicator--needs-look {
+  color: #ffc45c;
+  background: rgba(255, 196, 92, 0.18);
+}
+
+/* Save-error row — wraps the canonical `.capture-offline-pill`
+   in a centred container that sits between the row list and the
+   primary action. The pill itself uses the shared visual language
+   from `CaptureSheet.css` (`.capture-offline-pill`) so the photo
+   review surface speaks the same error vocabulary as the rest of
+   the app. */
+.photo-summary__error-row {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+}
+
+/* Retake button — soft-tinted twin of `.primary-action`. Same
+   tap area (56px), same border radius, same letter spacing so the
+   eye reads it as part of the same button family. The fill steps
+   down from "filled gradient with shadow" to "low-opacity brand
+   wash with cyan text" so Save All keeps the dominant role and
+   Retake reads as the calmer second-choice button — same
+   hierarchy iOS uses for primary + bordered-tinted buttons in
+   system dialogs. */
+.photo-summary__retake {
+  margin-top: 6px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 22px;
+  background: rgba(34, 211, 238, 0.10);
+  color: var(--color-brand-bright);
+  border: none;
+  border-radius: 14px;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) {
+  .photo-summary__retake:hover:not(:disabled) {
+    background: rgba(34, 211, 238, 0.16);
+  }
+}
+
+.photo-summary__retake:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.photo-summary__retake:focus-visible {
+  outline: 2px solid var(--color-brand-bright);
+  outline-offset: 2px;
+}
+
+.photo-summary__retake:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

@@ -1,0 +1,15 @@
+[STUBBED FOR CODE REVIEW]
+
+The production vision-extraction prompt (v1.3.1, ~84 lines) lives at
+this path in the real repo. It's the result of multiple weeks of
+iteration against the bake-off corpus + live field testing — stripped
+for this code-review sample.
+
+The shape the calling code expects:
+- Plain-text instructions, no JSON / YAML wrapping
+- Loaded once at adapter init via pathlib.Path.read_text()
+- Returned as the `system` message to the OpenAI vision call
+
+If you want to see this work end-to-end with a real prompt, drop your
+own extraction prompt at this path. The OpenAI adapter
+(`adapters/openai_vision.py`) loads whatever's here.

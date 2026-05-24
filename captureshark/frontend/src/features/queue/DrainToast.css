@@ -1,0 +1,62 @@
+/*
+ * Drain-complete toast — tiny, calm, bottom-anchored.
+ *
+ * Mounted by the parent inside a fixed-position container so position
+ * is layout-stable regardless of where in the tree this lives. Animates
+ * in from below; out is handled by the parent unmounting after
+ * `DISMISS_MS` (so we don't fight the parent's render cycle).
+ */
+
+.drain-toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border: 1px solid rgba(66, 211, 156, 0.35);
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(66, 211, 156, 0.15),
+      rgba(66, 211, 156, 0.07)
+    );
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.32),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  animation: drain-toast-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.drain-toast__check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-success);
+  color: #052e1a;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+@keyframes drain-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drain-toast {
+    animation: none;
+  }
+}

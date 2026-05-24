@@ -1,0 +1,165 @@
+/*
+ * ReviewPager — Embla-driven three-page pager with chrome overlay
+ * INSIDE the viewport.
+ *
+ * The chrome (disclosure + dots + counter) sits inside the same
+ * viewport that Embla's pointer handler watches, but lives OUTSIDE
+ * the translated container — so Embla sees gestures on it (same
+ * engine as on the cards) while it stays visually anchored.
+ *
+ * Slides reserve room for the chrome at the bottom via padding-bottom
+ * driven by the --review-pager-chrome-height CSS var (a ResizeObserver
+ * on the chrome writes the var on every resize, then calls
+ * emblaApi.reInit so slide geometry stays in sync). That is what makes
+ * "open the disclosure → tan card compresses" work, instead of the
+ * chrome covering the bottom of the tan card.
+ */
+
+.review-pager {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.review-pager__viewport {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  /* Declared on the viewport so EVERY descendant — including the
+     absolutely-positioned chrome overlay that sits inside the
+     viewport but outside the translated container — inherits the
+     same gesture contract. Without this declared at this level the
+     chrome inherits touch-action: auto, which forces iOS Safari to
+     wait for the pointermove handler to preventDefault() before
+     deciding the horizontal gesture isn't its to handle. Engineer 04
+     fix from the no-panel-migration lag consultation. */
+  touch-action: pan-y pinch-zoom;
+}
+
+.review-pager__container {
+  display: flex;
+  height: 100%;
+  touch-action: pan-y pinch-zoom;
+  /* Pre-promote the container to its own GPU compositing layer at mount
+     time. Without this hint, iOS Safari only promotes the layer when
+     the first transform actually runs — making swipe #1 noticeably
+     laggier than swipe #2+ because layer creation happens mid-gesture.
+     Standard cross-browser hint; strongest effect on WebKit, neutral
+     on Blink/Gecko which auto-promote sooner. */
+  will-change: transform;
+}
+
+.review-pager__slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  height: 100%;
+  /* Reserve room at the bottom of every slide for the absolute chrome
+     overlay so caller-rendered slide content shrinks cleanly when
+     the chrome grows (e.g. disclosure opens). The 14px gap matches
+     the original design rhythm between the tan card and the
+     overlay. The CSS var defaults to 0px so on first paint (before
+     the ResizeObserver has measured the chrome) the slide doesn't
+     reserve infinite room. */
+  padding-bottom: calc(var(--review-pager-chrome-height, 0px) + 14px);
+  box-sizing: border-box;
+  /* Per-slide GPU layer promotion — gives iOS Safari three small
+     pre-rasterized slide textures to composite during the gesture
+     instead of having all slide content baked into the single
+     container layer. Embla's own reference example does this on
+     every slide and the iPhone feel is noticeably smoother. */
+  transform: translate3d(0, 0, 0);
+}
+
+/* Chrome overlay — sits inside the viewport so Embla's pointer
+   handler catches gestures on it, but positioned absolutely so it
+   doesn't ride the translated container. */
+.review-pager__chrome {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Show / hide the original note — React owns the open state so Embla
+   keeps full control of the gesture (a native <details> click would
+   fire before Embla could coordinate). */
+.review-pager__original-toggle {
+  align-self: flex-start;
+  background: transparent;
+  border: none;
+  padding: 6px 0;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cream-text-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-pager__chevron {
+  flex-shrink: 0;
+  transform-origin: center;
+}
+
+.review-pager__original-toggle[aria-expanded="true"] .review-pager__chevron {
+  transform: rotate(90deg);
+}
+
+.review-pager__original-body {
+  margin: 0;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  white-space: pre-wrap;
+  color: var(--cream-dark-olive);
+  /* Cap visible expansion so opening doesn't push Save down on long
+     notes. Scrolls inside if the note is longer. */
+  max-height: 96px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Segmented pagination bars — three horizontal pills (not dots). The
+   active bar is wider and espresso; inactives are short and tan. */
+.review-pager__dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.review-pager__dot {
+  width: 22px;
+  height: 4px;
+  padding: 0;
+  border-radius: 2px;
+  border: none;
+  background: var(--cream-text-hairline);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.review-pager__dot--active {
+  background: var(--cream-espresso);
+  width: 29px;
+}
+
+.review-pager__counter {
+  text-align: center;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 12px;
+  color: var(--cream-text-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}

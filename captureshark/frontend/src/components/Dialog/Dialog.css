@@ -1,0 +1,173 @@
+/*
+ * Dialog — cream-theme modal primitive.
+ *
+ * Backdrop is a warm espresso dim (not slate). Card uses the cream
+ * page background with a hairline tan border, espresso headline,
+ * muted body, and the same espresso filled primary CTA shape the
+ * canvas Extract / Save buttons use. Secondary + destructive actions
+ * are quiet ghost buttons so the primary always reads as the answer.
+ */
+
+.dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(42, 31, 18, 0.42); /* espresso @ 42% */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.dialog__card {
+  width: min(360px, 100%);
+  background: var(--cream-page-bg);
+  border: 1px solid var(--cream-border-tan);
+  border-radius: 22px;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+  color: var(--cream-espresso);
+  box-shadow:
+    0 24px 56px -16px rgba(42, 31, 18, 0.32),
+    0 6px 16px -8px rgba(42, 31, 18, 0.12);
+}
+
+/* --- Icon ring --------------------------------------------------- */
+
+.dialog__indicator {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+}
+
+.dialog__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 64px;
+  text-align: center;
+}
+
+.dialog__icon--warning {
+  background: rgba(140, 122, 31, 0.16); /* olive-gold @ 16% */
+  color: var(--cream-olive-gold);
+  box-shadow: 0 8px 32px -8px rgba(140, 122, 31, 0.30);
+}
+
+.dialog__icon--question {
+  background: rgba(42, 31, 18, 0.08);
+  color: var(--cream-espresso);
+  box-shadow: 0 8px 32px -8px rgba(42, 31, 18, 0.18);
+}
+
+/* --- Headline + body -------------------------------------------- */
+
+.dialog__title {
+  margin: 0;
+  font-family: "Outfit", var(--font-sans);
+  font-weight: 500;
+  font-size: 28px;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  color: var(--cream-espresso);
+}
+
+.dialog__body {
+  margin: 0;
+  font-family: "Outfit", var(--font-sans);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--cream-text-muted);
+}
+
+/* --- Action stack ----------------------------------------------- */
+
+.dialog__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.dialog__action {
+  width: 100%;
+  border-radius: 14px;
+  font-family: "Outfit", var(--font-sans);
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+/* Primary — the dominant choice. Filled espresso, full-size CTA. */
+.dialog__action--primary {
+  min-height: 56px;
+  padding: 0 22px;
+  font-size: 16px;
+  font-weight: 500;
+  background: var(--cream-espresso);
+  color: var(--cream-text-on-dark);
+  border: 1px solid var(--cream-espresso);
+  box-shadow: 0 8px 24px rgba(42, 31, 18, 0.18);
+}
+
+/* Secondary + Destructive — clearly subordinate. No chrome, shorter
+   tap target (still ≥ Apple's 44px minimum), lighter typography. The
+   destructive accent stays so the warning intent reads, but without
+   the filled-button weight that put it on equal footing with Save. */
+.dialog__action--secondary,
+.dialog__action--destructive {
+  min-height: 44px;
+  padding: 0 18px;
+  font-size: 15px;
+  font-weight: 500;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.dialog__action--secondary {
+  color: var(--cream-text-muted);
+}
+
+.dialog__action--destructive {
+  color: var(--cream-olive-gold);
+}
+
+@media (hover: hover) {
+  .dialog__action--primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 32px rgba(42, 31, 18, 0.26);
+  }
+  .dialog__action--secondary:hover {
+    background: rgba(42, 31, 18, 0.04);
+    color: var(--cream-espresso);
+  }
+  .dialog__action--destructive:hover {
+    background: rgba(140, 122, 31, 0.06);
+  }
+}
+
+.dialog__action:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog__action {
+    transition: none;
+  }
+}

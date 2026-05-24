@@ -1,0 +1,133 @@
+/*
+ * Layout for the ReviewPager gesture-feel test page.
+ *
+ * Cream canvas, column flex, heading + pager (flex:1) + Save/Discard,
+ * so the drag dimensions and rhythm match the spot the pager will
+ * occupy once integrated into App.canvas.tsx. The tan card visual and
+ * the row grid live here — the ReviewPager component is content
+ * agnostic and only owns the viewport / container / chrome.
+ */
+
+.review-pager-test {
+  position: fixed;
+  inset: 0;
+  background: var(--cream-page-bg);
+  color: var(--cream-espresso);
+  font-family: var(--font-sans);
+  height: 100svh;
+  width: 100%;
+  padding: 32px 20px 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.review-pager-test__heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 0 4px;
+}
+
+.review-pager-test__eyebrow {
+  font-family: Inter, var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cream-text-muted);
+}
+
+.review-pager-test__name {
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
+.review-pager-test__budget {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--cream-text-muted);
+}
+
+/* Tan card slice — mirrors the legacy .app-canvas__review-card so the
+   feel matches what'll be in App.canvas.tsx once integrated. Margin
+   on the sides creates a small bezel inside the slide so adjacent
+   cards don't visually touch during a drag. */
+.review-pager-test__card {
+  height: 100%;
+  padding: 4px 16px;
+  background: var(--cream-panel-bg);
+  border: 1px solid var(--cream-border-tan);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-sizing: border-box;
+  margin: 0 4px;
+  display: flex;
+  overflow: hidden;
+}
+
+.review-pager-test__rows {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-rows: repeat(4, 1fr);
+  width: 100%;
+  height: 100%;
+}
+
+.review-pager-test__row {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  align-items: center;
+  column-gap: 12px;
+  min-height: 0;
+  border-bottom: 1px solid var(--cream-divider);
+}
+
+.review-pager-test__row:last-child {
+  border-bottom: none;
+}
+
+.review-pager-test__row-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--cream-text-muted);
+  margin: 0;
+}
+
+.review-pager-test__row-value {
+  margin: 0;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--cream-dark-olive);
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.review-pager-test__save,
+.review-pager-test__discard {
+  border: none;
+  border-radius: 999px;
+  padding: 14px 18px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.review-pager-test__save {
+  background: var(--cream-espresso);
+  color: var(--cream-page-bg);
+}
+
+.review-pager-test__discard {
+  background: transparent;
+  color: var(--cream-text-muted);
+}

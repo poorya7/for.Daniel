@@ -1,0 +1,117 @@
+/* ============================================================
+ * Shared consent overlay — one set of styles for every "just so
+ * you know" disclosure in the app (voice, photo, future
+ * features). Lifted from CaptureSheet.css / PhotoCapture.css on
+ * 2026-05-17 so the dialog's look is governed in one place.
+ *
+ * Positioning: absolute / inset: 0, so the parent (voice surface,
+ * photo capture surface, etc.) defines the bounding box. Z-index
+ * is high enough to sit above sibling overlays in the same
+ * stacking context without leaking out of its parent.
+ *
+ * Lifecycle: ConsentOverlay.tsx.
+ * ============================================================ */
+
+.consent-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 20;
+  /* Scrim — soft, not a hard modal blackout. Lets the parent
+     surface read through faintly so the user remembers what
+     they're consenting to use. */
+  background: rgba(8, 12, 22, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  /* Scrim fades in first as a calm darkening of the parent surface.
+     The dim is perceptible BEFORE the panel lands so the eye gets a
+     beat to know "something's coming" rather than the panel just
+     popping in. ASMR ease, no snap. */
+  animation: consent-overlay-in 460ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.consent-panel {
+  width: min(100%, 320px);
+  background: var(--color-surface, #11161f);
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+  border-radius: 16px;
+  padding: 22px 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+  /* Panel lifts in on top of the dimmed scrim with a small scale +
+     translate so it reads as "settling onto" the surface rather
+     than just appearing. ~120ms delay so the scrim's dim lands
+     first and the panel is the second beat. Long calm easing
+     matches the sheet's other phase transitions. */
+  transform-origin: center;
+  animation: consent-panel-in 520ms cubic-bezier(0.22, 0.61, 0.36, 1) 120ms both;
+}
+
+.consent-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: -0.005em;
+}
+
+.consent-body {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.consent-cta {
+  margin-top: 8px;
+}
+
+/* Secondary "Maybe later" — quiet text-button below the primary CTA.
+   Doesn't compete with the primary visually, but is clearly tappable
+   so the broker has an obvious escape hatch and never feels trapped. */
+.consent-dismiss {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  margin: 0 auto;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+.consent-dismiss:hover,
+.consent-dismiss:focus-visible {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.04);
+  outline: none;
+}
+
+@keyframes consent-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes consent-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .consent-overlay,
+  .consent-panel {
+    animation: none;
+  }
+}

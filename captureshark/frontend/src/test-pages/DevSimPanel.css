@@ -1,0 +1,91 @@
+/* Dev simulator panel — neutral, scannable, no flourish. The card
+   styling mirrors the rest of the app's dark surface vocabulary so
+   it doesn't look like a half-finished prototype, but everything
+   here is dev-only by definition. */
+
+/* global.css hard-locks `body { overflow: hidden }` for the main app
+   (every real screen fits the viewport). The sim panel is the one dev
+   surface that legitimately has more rows than fit on a phone, so the
+   page itself owns the scroll instead of body. */
+.dev-sim-page {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 32px 20px 48px;
+  background: var(--color-bg, #07101f);
+  color: var(--color-text, #f5f7fa);
+  font-family: var(--font-sans, "Inter"), sans-serif;
+  box-sizing: border-box;
+}
+
+.dev-sim-header {
+  max-width: 560px;
+  margin: 0 auto 28px;
+}
+
+.dev-sim-header h1 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  letter-spacing: -0.005em;
+}
+
+.dev-sim-header p {
+  font-size: 15px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.78);
+  margin: 0 0 8px;
+}
+
+.dev-sim-note {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.48);
+  font-style: italic;
+}
+
+.dev-sim-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 auto;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dev-sim-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.dev-sim-link {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dev-sim-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-brand-bright, #22d3ee);
+}
+
+.dev-sim-blurb {
+  font-size: 14px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+@media (hover: hover) {
+  .dev-sim-card:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+}

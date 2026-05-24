@@ -1,0 +1,36 @@
+/* Pinch + pan crop surface — gesture-only, no visual chrome.
+ *
+ * Owns gesture interpretation. The browser must NOT interpret the
+ * touches itself (pinch-zoom, double-tap zoom, scrolling), or our
+ * handlers fight the page-level behaviour.
+ *
+ * `touch-action: none` disables every default gesture on this
+ * surface and its descendants. Click events still synthesize on
+ * touch-tap, so children with `onClick` still work.
+ *
+ * `overflow: hidden` clips the transformed child to the surface
+ * bounds — the user must not see the child's edges drift in / out
+ * during pan.
+ */
+
+.pinch-pan-crop-surface {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.pinch-pan-crop-surface__child {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 50%;
+  /* No transition by default — the gesture path sets transform
+   * synchronously every frame, and adding a transition would smear
+   * each finger movement across multiple frames. The caller may add
+   * a transition class for snap-back / reset animations. */
+}

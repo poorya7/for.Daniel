@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>CaptureShark – STT bakeoff audio</title>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --surface: #14181d;
+    --surface-2: #1c2127;
+    --border: #262c33;
+    --text: #e6edf3;
+    --muted: #8b95a1;
+    --accent: #4c8dff;
+    --accent-soft: rgba(76,141,255,0.15);
+    --good: #7ce38b;
+    --warn: #f5c560;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) calc(env(safe-area-inset-bottom) + 80px) env(safe-area-inset-left);
+  }
+  header {
+    padding: 20px 16px 12px;
+    position: sticky;
+    top: 0;
+    background: linear-gradient(var(--bg) 80%, transparent);
+    z-index: 5;
+  }
+  header h1 {
+    font-size: 18px;
+    margin: 0 0 4px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  header .sub { color: var(--muted); font-size: 13px; }
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .tab.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  main { padding: 0 12px; }
+  .clip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin: 10px 0;
+    transition: border-color 0.15s ease;
+  }
+  .clip.playing { border-color: var(--accent); }
+  .clip-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .clip-index {
+    color: var(--muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    flex: 0 0 auto;
+  }
+  .clip-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    flex: 1 1 auto;
+  }
+  .tag {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .tag.accent-american { color: #b3d4ff; }
+  .tag.accent-british  { color: #ffd1a3; }
+  .tag.accent-au       { color: #c8b6ff; }
+  .tag.accent-other    { color: #ffb3b3; }
+  .tag.noise-clean     { color: var(--good); }
+  .tag.noise-room_quiet,
+  .tag.noise-room_busy { color: var(--warn); }
+  .tag.noise-outdoor,
+  .tag.noise-crowded   { color: #ff9a8a; }
+  .clip-dur {
+    color: var(--muted);
+    font-size: 12px;
+    flex: 0 0 auto;
+  }
+  audio {
+    width: 100%;
+    margin-top: 8px;
+    height: 38px;
+  }
+  .transcript {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.2s ease;
+  }
+  .transcript.open { max-height: 400px; }
+  .show-transcript {
+    margin-top: 8px;
+    background: transparent;
+    border: 0;
+    color: var(--accent);
+    font-size: 12px;
+    padding: 4px 0;
+    cursor: pointer;
+    user-select: none;
+  }
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 40px 0;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>CaptureShark — STT bakeoff audio</h1>
+  <div class="sub" id="summary">Loading…</div>
+  <div class="tabs" id="tabs"></div>
+</header>
+<main id="list"><div class="empty">Loading…</div></main>
+
+<script>
+const SETS = [
+  { id: 'smoke',     label: 'Smoke (1 clip)' },
+  { id: 'set_10min', label: '10-min set' },
+  { id: 'set_30min', label: '30-min set' },
+];
+
+const state = { active: 'smoke', manifest: null, playingEl: null };
+
+function parseName(file) {
+  // e.g. set_30min_042_george-uk-male-mid_outdoor_lucas-martin-vendor.mp3
+  const stem = file.replace(/\.mp3$/, '');
+  const parts = stem.split('_');
+  // last segment after voice/noise — slug; voice-label has a known shape "<name>-<accent>-<gender>-<age>"
+  // We'll just pick: index (parts[2]), voice (parts[3]), noise (parts[4]), slug (rest)
+  const idx = parts[2] || '';
+  const voice = parts[3] || '';
+  const noise = parts[4] || '';
+  const slug = parts.slice(5).join('_');
+  const accent = voice.split('-')[1] || 'other';
+  return { idx, voice, noise, slug, accent };
+}
+
+function fmtDur(s) {
+  if (!s) return '';
+  return s.toFixed(1) + 's';
+}
+
+function renderTabs() {
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = '';
+  for (const s of SETS) {
+    const count = state.manifest[s.id]?.length || 0;
+    const total = (state.manifest[s.id] || []).reduce((a, b) => a + (b.duration || 0), 0);
+    const btn = document.createElement('button');
+    btn.className = 'tab' + (state.active === s.id ? ' active' : '');
+    btn.textContent = `${s.label} • ${count} • ${(total/60).toFixed(1)} min`;
+    btn.onclick = () => { state.active = s.id; renderTabs(); renderList(); window.scrollTo(0,0); };
+    tabs.appendChild(btn);
+  }
+}
+
+function renderList() {
+  const list = document.getElementById('list');
+  const items = state.manifest[state.active] || [];
+  list.innerHTML = '';
+  if (items.length === 0) {
+    list.innerHTML = '<div class="empty">No clips in this set.</div>';
+    return;
+  }
+  for (const item of items) {
+    const meta = parseName(item.file);
+    const card = document.createElement('div');
+    card.className = 'clip';
+
+    const head = document.createElement('div');
+    head.className = 'clip-meta';
+    head.innerHTML = `
+      <span class="clip-index">#${meta.idx}</span>
+      <span class="clip-tags">
+        <span class="tag accent-${meta.accent}">${meta.voice}</span>
+        <span class="tag noise-${meta.noise}">${meta.noise.replace('_',' ')}</span>
+      </span>
+      <span class="clip-dur">${fmtDur(item.duration)}</span>
+    `;
+    card.appendChild(head);
+
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.preload = 'none';
+    audio.src = `/audio-test/${state.active}/${encodeURIComponent(item.file)}`;
+    audio.addEventListener('play', () => {
+      if (state.playingEl && state.playingEl !== audio) {
+        state.playingEl.pause();
+      }
+      state.playingEl = audio;
+      card.classList.add('playing');
+    });
+    audio.addEventListener('pause', () => card.classList.remove('playing'));
+    audio.addEventListener('ended', () => card.classList.remove('playing'));
+    card.appendChild(audio);
+
+    if (item.transcript) {
+      const btn = document.createElement('button');
+      btn.className = 'show-transcript';
+      btn.textContent = 'show transcript';
+      const tx = document.createElement('div');
+      tx.className = 'transcript';
+      tx.textContent = item.transcript;
+      btn.onclick = () => {
+        const open = tx.classList.toggle('open');
+        btn.textContent = open ? 'hide transcript' : 'show transcript';
+      };
+      card.appendChild(btn);
+      card.appendChild(tx);
+    }
+
+    list.appendChild(card);
+  }
+}
+
+async function init() {
+  try {
+    const r = await fetch('/audio-test/manifest.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('manifest fetch failed: ' + r.status);
+    state.manifest = await r.json();
+    const totalClips = Object.values(state.manifest).reduce((a, b) => a + b.length, 0);
+    const totalDur = Object.values(state.manifest).flat().reduce((a, b) => a + (b.duration || 0), 0);
+    document.getElementById('summary').textContent =
+      `${totalClips} clips • ${(totalDur/60).toFixed(1)} min total`;
+    renderTabs();
+    renderList();
+  } catch (e) {
+    document.getElementById('list').innerHTML =
+      `<div class="empty">Couldn't load manifest.<br/><small>${e.message}</small></div>`;
+  }
+}
+init();
+</script>
+</body>
+</html>

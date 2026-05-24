@@ -1,0 +1,29 @@
+/*
+ * Online/offline indicator — calm, low-contrast (plan §8.5).
+ *
+ * Sized to recede until the user looks for it. Grey, not red.
+ */
+
+.online-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  color: var(--color-text-faint);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.online-indicator__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  /* No glow, no animation. The whole point is "calmly there." */
+}
+
+.online-indicator__text {
+  font-weight: 500;
+}

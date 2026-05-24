@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- `interactive-widget=overlays-content` tells modern browsers to
+         float the on-screen keyboard ON TOP of the page rather than
+         resizing/repositioning content underneath. Chromium honors it
+         consistently; Safari support is partial but improving — when
+         honored, prevents the review-sheet from jumping when the user
+         taps an edit pencil and the keyboard rises. When not honored,
+         the browser falls back to the default scroll-into-view
+         behaviour, so this is a safe progressive enhancement. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=overlays-content" />
+    <!-- Page is a solid slate-900 canvas (no gradient). theme-color
+         matches that exact value so iOS Safari's status / address-bar
+         chrome blends seamlessly with the page. Gradients live inside
+         the capture sheet (focal depth where attention is), not on
+         the canvas — Apple-style. -->
+    <meta name="theme-color" content="#0f172a" />
+    <meta
+      name="description"
+      content="CaptureShark — capture a lead, we'll add it to your Google Sheet."
+    />
+    <link rel="icon" type="image/png" href="/brand/sharky.png" />
+    <!-- Quicksand for the brand wordmark (rounded-geo, matches the fin). Inter
+         for body / UI copy (clean, neutral, pairs well with Quicksand without
+         competing). Both loaded together so the home-screen hero paints fully
+         styled on first frame; we'll self-host once the design system stabilises. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Inter:wght@200;300;400;500;600;700&family=Outfit:wght@200;300;400;500&display=swap"
+    />
+    <title>CaptureShark</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,5 @@
+[STUBBED FOR CODE REVIEW]
+
+The v1 prompt (the original vision-extraction prompt, kept in-tree as
+history before v1.3.1 became production). Stripped for the code-review
+sample.

@@ -1,0 +1,524 @@
+/*
+ * LeadReviewCard styles — the rendering layer for "review one lead."
+ *
+ * Scope: only the card's INTERNAL styles live here (heading, rows, edit
+ * panel chrome). Positioning the card inside the parent layout (where
+ * on screen it sits) is the parent's job — see e.g.
+ * `.app-canvas__review` in App.canvas.css for the canvas's positioning.
+ *
+ * Structure: the card root holds TWO sibling layers that occupy the
+ * same space — the review surface (heading + paged rows + footer) and
+ * the edit panel (per-field editor). Visibility swaps via the
+ * `data-editing` attribute on the root so ReviewPager stays mounted
+ * across edit round-trips (scroll position / active slide survive).
+ *
+ * Token palette: cream end-to-end. `var(--cream-*)` tokens defined in
+ * styles/global.css.
+ */
+
+.lead-review-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /* Root is a layout shell — the review surface and the edit panel
+     sit inside, each managing their own click capture. Setting the
+     root to pointer-events:none ensures stray taps in the empty card
+     area (visible as cream around the focused content) fall through
+     to the backdrop catcher so the dismiss flow can resolve them. */
+  pointer-events: none;
+}
+
+/* ---------- Review surface (default visible) ------------------------- */
+
+.lead-review-card__review {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.lead-review-card[data-editing="true"] .lead-review-card__review {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Heading — 3-line poetic stack, centred. */
+.lead-review-card__heading {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.lead-review-card__eyebrow {
+  font-family: "Outfit", var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cream-text-subtle);
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+/* Name row — name centred, agent pill pinned to the right corner so
+   the name stays centred regardless of pill width (FREE / AGENT swap
+   doesn't shift it). */
+.lead-review-card__name-row {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.lead-review-card__name {
+  font-family: "Outfit", var(--font-sans);
+  font-weight: 800;
+  font-size: 31px;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  color: var(--cream-espresso);
+}
+
+.lead-review-card__budget {
+  font-family: "Outfit", var(--font-sans);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.25;
+  color: var(--cream-olive-gold);
+  margin-top: 8px;
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+/* Agent-status pill — replaces the legacy corner ribbon. Same amber /
+   green vocabulary (warm amber for AGENT — represented; mint green for
+   FREE — pursueable). */
+.lead-review-card__agent-pill {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-family: "Inter", var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  box-shadow: 0 3px 8px rgba(60, 40, 20, 0.15);
+}
+
+.lead-review-card__agent-pill-dot {
+  /* Solid-badge look — gradient + bold text carries the at-a-glance
+     signal, no dot needed. */
+  display: none;
+}
+
+.lead-review-card__agent-pill--free {
+  background: linear-gradient(145deg, #9af3cf, #42d39c);
+  color: #06321f;
+}
+
+.lead-review-card__agent-pill--agent {
+  background: linear-gradient(145deg, #ffe7a8, #ffc45c);
+  color: #3a1e02;
+}
+
+/* ReviewPager owns flex:1 + min-height:0 + column layout itself — we
+   only spacer it down from the heading. */
+.lead-review-card__review > .review-pager {
+  margin-top: 18px;
+}
+
+/* Tan rows card — one per ReviewPager slide. Sized to its content so
+   the tan card stays a consistent height regardless of viewport
+   (avoids the yo-yo where the card stretched with browser zoom). The
+   slide stays full-height around it — the cream area below the card,
+   inside the slide, remains a swipeable surface for the Embla gesture
+   handler (which is exactly what the team intentionally built and we
+   must not break). */
+.lead-review-card__page {
+  height: auto;
+  box-sizing: border-box;
+  padding: 4px 16px;
+  background: var(--cream-panel-bg);
+  border: 1px solid var(--cream-border-tan);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  display: flex;
+  overflow: hidden;
+}
+
+/* 4-row grid, each row equal share. Page 3 has only 3 rows; the 4th
+   slot stays empty so all pages share row heights. */
+.lead-review-card__fields {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  /* Each row has a comfortable min-height (Apple's 44pt+ tap-target
+     plus breathing room for the label / value pair) and can grow with
+     content. No `1fr` — that produced the yo-yo where rows stretched
+     to fill whatever room the card had on tall viewports and squeezed
+     past their content on short ones. Fixed `minmax(64px, auto)` keeps
+     row heights consistent across zoom levels; the card naturally
+     occupies the same vertical footprint everywhere, the cream
+     around it breathes instead. */
+  grid-template-rows: repeat(4, minmax(64px, auto));
+  align-self: flex-start;
+  width: 100%;
+  min-width: 0;
+}
+
+.lead-review-card__row {
+  display: grid;
+  grid-template-columns: 84px 1fr auto;
+  align-items: center;
+  column-gap: 12px;
+  padding: 0;
+  min-height: 0;
+  border-bottom: 1px solid var(--cream-divider);
+}
+
+.lead-review-card__row:last-child {
+  border-bottom: none;
+}
+
+.lead-review-card__row--tappable {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  /* Tells iOS Safari "no double-tap-zoom on this element" — removes
+     the residual touch-arbitration cost on tappable elements inside
+     gesture surfaces. */
+  touch-action: manipulation;
+}
+
+.lead-review-card__row--tappable:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--cream-text-hairline-strong);
+  border-radius: 6px;
+}
+
+.lead-review-card__row-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--cream-text-muted);
+  margin: 0;
+}
+
+.lead-review-card__row-value {
+  margin: 0;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Confidence-coloured value text — high = dark olive ("trust this");
+   medium = olive gold ("verify this"), paired with the inline pill. */
+.lead-review-card__row-value--high .lead-review-card__row-value-text {
+  color: var(--cream-dark-olive);
+}
+
+.lead-review-card__row-value--medium .lead-review-card__row-value-text {
+  color: var(--cream-olive-gold);
+}
+
+/* Empty-state placeholder — no value yet, tappable to open the editor. */
+.lead-review-card__row-value-text--empty {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--cream-text-faint);
+}
+
+.lead-review-card__row-confidence {
+  font-family: "Inter", var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--cream-olive-gold);
+  background: rgba(140, 122, 31, 0.12);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.lead-review-card__pencil {
+  width: 16px;
+  height: 16px;
+  color: var(--cream-dark-olive);
+  opacity: 0.5;
+  align-self: center;
+}
+
+/* Yes/No segmented control for has_agent. Two pills side by side;
+   selected fills with espresso. */
+.lead-review-card__yesno {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.lead-review-card__yesno-btn {
+  min-width: 56px;
+  min-height: 32px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--cream-text-hairline-strong);
+  background: transparent;
+  color: var(--cream-espresso);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lead-review-card__yesno-btn--selected {
+  background: var(--cream-espresso);
+  color: var(--cream-text-on-dark);
+  border-color: var(--cream-espresso);
+}
+
+/* ---------- Edit panel (hidden by default; visible on data-editing) -- */
+
+.lead-review-card__edit {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lead-review-card[data-editing="true"] .lead-review-card__edit {
+  opacity: 1;
+  /* Container stays pointer-events:none even when visible — its empty
+     cream area (above the label, beside the input, below the buttons)
+     should fall through to the backdrop so a tap there closes the
+     field. The actual edit controls absorb their own taps via the
+     direct-child rule below. */
+}
+
+.lead-review-card[data-editing="true"] .lead-review-card__edit > * {
+  pointer-events: auto;
+}
+
+.lead-review-card__edit-label {
+  margin: 0 0 20px;
+  font-family: "Outfit", var(--font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cream-text-muted);
+  text-align: center;
+}
+
+.lead-review-card__textarea {
+  width: 100%;
+  min-height: 140px;
+  resize: none;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--cream-espresso);
+  font-family: "Outfit", var(--font-sans);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.5;
+  border: 1px solid var(--cream-text-hairline);
+  border-radius: 14px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.lead-review-card__textarea:focus {
+  border-color: var(--cream-text-hairline-strong);
+}
+
+.lead-review-card__input {
+  width: 100%;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--cream-espresso);
+  font-family: "Outfit", var(--font-sans);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.5;
+  border: 1px solid var(--cream-text-hairline);
+  border-radius: 14px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.lead-review-card__input:focus {
+  border-color: var(--cream-text-hairline-strong);
+}
+
+/* Phone input — single-line shape, no big min-height. */
+.lead-review-card__input--single {
+  height: 56px;
+}
+
+/* Picker mode (Intent / Timeline / Financing). Instant-commit pills
+   that wrap freely so 4-5 fit on one row or two rows for longer
+   labels. */
+.lead-review-card__picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+.lead-review-card__picker-option {
+  flex: 1 1 auto;
+  min-width: 70px;
+  padding: 18px 14px;
+  border: 1px solid var(--cream-border-tan);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--cream-espresso);
+  font-family: "Outfit", var(--font-sans);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.lead-review-card__picker-option--selected {
+  background: var(--cream-espresso);
+  color: var(--cream-text-on-dark);
+  border-color: var(--cream-espresso);
+}
+
+/* Email composite editor — input + suggestion pills inside a single
+   container so the pills ride above the soft keyboard with the input
+   when it rises. The box carries the textarea border / background; the
+   input inside is transparent. */
+.lead-review-card__email-box {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--cream-text-hairline);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.lead-review-card__email-box:focus-within {
+  border-color: var(--cream-text-hairline-strong);
+}
+
+.lead-review-card__email-input {
+  width: 100%;
+  padding: 16px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--cream-espresso);
+  font-family: "Outfit", var(--font-sans);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.5;
+  -webkit-appearance: none;
+  border-radius: 14px 14px 0 0;
+}
+
+.lead-review-card__email-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 10px 10px 10px;
+}
+
+.lead-review-card__email-pill {
+  padding: 8px 12px;
+  border: 1px solid var(--cream-border-tan);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--cream-espresso);
+  font-family: "Outfit", var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Done button — primary espresso CTA below the editor. */
+.lead-review-card__done {
+  margin-top: 14px;
+  width: 100%;
+  min-height: 56px;
+  border: none;
+  border-radius: 14px;
+  background: var(--cream-espresso);
+  color: var(--cream-text-on-dark);
+  font-family: "Outfit", var(--font-sans);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Cancel — quiet text-only escape hatch under Done. */
+.lead-review-card__cancel {
+  margin-top: 10px;
+  width: 100%;
+  min-height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--cream-text-muted);
+  font-family: "Outfit", var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lead-review-card__cancel:active {
+  opacity: 0.6;
+}
+
+/* ---------- Compact viewport adjustments ---------------------------- */
+
+@media (max-height: 700px) {
+  .lead-review-card__name {
+    font-size: 26px;
+  }
+  .lead-review-card__budget {
+    font-size: 18px;
+  }
+  .lead-review-card__row {
+    padding: 8px 0;
+  }
+  .lead-review-card__edit-label {
+    font-size: 14px;
+    margin-bottom: 14px;
+  }
+  .lead-review-card__textarea {
+    min-height: 110px;
+  }
+}
