@@ -1,0 +1,101 @@
+/* ═══════════════════════════════════════════════════════════
+   music-only.css — Music-only video state
+   Extracted from src/css/dashboard.css 2026-05-08 (Phase 3 D3).
+   Original line range: 5921–5999.
+
+   Why a separate file: every rule is scoped to either
+   `body.is-mostly-music` (set by AppState.isMostlyMusic when the
+   video is detected as music with sparse/no speech) or to the
+   .music-only-* / .transcript-music-only-* classes that only render
+   in that state. No rules elsewhere in the codebase reference these
+   selectors, so the file is fully self-contained.
+
+   Architecture context: see docs/_tech/01_ARCHITECTURE.md and the
+   AppState.isMostlyMusic detection logic in src/js/.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Music-only state (set by AppState.isMostlyMusic) ──
+   Hides default content + reveals badge/placeholder elements that are
+   already in the DOM but display:none by default. JS only toggles the
+   body class — no per-panel imperative DOM manipulation. */
+.music-only-badge {
+  display: none;
+  margin: 0 0 12px 0;
+  padding: 8px 14px;
+  background: var(--bubble-ai-bg, #fef5e7);
+  color: var(--text-secondary, #6b5b4d);
+  border: 1px solid var(--bubble-ai-border, #e8d4b8);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  /* Font inherits — the per-language script cascade
+     (`body[data-translate-lang="fa"]` / `.lang-XX` etc. in dashboard.css)
+     picks the right Persian / Arabic / CJK / Devanagari face for us. */
+  font-family: inherit;
+}
+.transcript-music-only-placeholder {
+  display: none;
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--text-secondary, #6b5b4d);
+  font-family: inherit;
+}
+.transcript-music-only-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-primary, #2d2419);
+  font-family: inherit;
+}
+.transcript-music-only-sub {
+  font-size: 14px;
+  opacity: 0.75;
+  font-family: inherit;
+}
+body.is-mostly-music .music-only-badge { display: block; }
+body.is-mostly-music #fullTranscriptPanel { display: none; }
+body.is-mostly-music .transcript-music-only-placeholder { display: block; }
+/* Chapter region: only the music-only badge stays. The skeleton/host and
+   the mobile chapters list are hidden — there's nothing to chapter through
+   when there's no spoken content, and otherwise the skeleton ghost rows
+   sit there forever (chapters_final arrives with an empty list, and
+   renderTopics is a no-op until real chapters land). */
+body.is-mostly-music #topicsList { display: none; }
+body.is-mostly-music #chaptersTabList { display: none; }
+
+/* Per-language font + RTL coverage for the music-only message. Mirrors
+   the existing bilingual-sub patterns above — explicit one-line rules
+   per script family, no JS-side font management needed. */
+body[data-translate-lang="fa"] .music-only-badge,
+body[data-translate-lang="fa"] .transcript-music-only-title,
+body[data-translate-lang="fa"] .transcript-music-only-sub { font-family: 'Vazirmatn', sans-serif; direction: rtl; }
+body[data-translate-lang="ar"] .music-only-badge,
+body[data-translate-lang="ar"] .transcript-music-only-title,
+body[data-translate-lang="ar"] .transcript-music-only-sub { font-family: 'Noto Sans Arabic', sans-serif; direction: rtl; }
+body[data-translate-lang="he"] .music-only-badge,
+body[data-translate-lang="he"] .transcript-music-only-title,
+body[data-translate-lang="he"] .transcript-music-only-sub { font-family: 'Noto Sans Hebrew', sans-serif; direction: rtl; }
+body[data-translate-lang="ur"] .music-only-badge,
+body[data-translate-lang="ur"] .transcript-music-only-title,
+body[data-translate-lang="ur"] .transcript-music-only-sub { font-family: 'Noto Naskh Arabic', sans-serif; direction: rtl; }
+body[data-translate-lang="ja"] .music-only-badge,
+body[data-translate-lang="ja"] .transcript-music-only-title,
+body[data-translate-lang="ja"] .transcript-music-only-sub { font-family: 'Noto Sans JP', sans-serif; }
+body[data-translate-lang="zh"] .music-only-badge,
+body[data-translate-lang="zh"] .transcript-music-only-title,
+body[data-translate-lang="zh"] .transcript-music-only-sub { font-family: 'Noto Sans SC', sans-serif; }
+body[data-translate-lang="zh-tw"] .music-only-badge,
+body[data-translate-lang="zh-tw"] .transcript-music-only-title,
+body[data-translate-lang="zh-tw"] .transcript-music-only-sub { font-family: 'Noto Sans TC', sans-serif; }
+body[data-translate-lang="ko"] .music-only-badge,
+body[data-translate-lang="ko"] .transcript-music-only-title,
+body[data-translate-lang="ko"] .transcript-music-only-sub { font-family: 'Noto Sans KR', sans-serif; }
+body[data-translate-lang="hi"] .music-only-badge,
+body[data-translate-lang="hi"] .transcript-music-only-title,
+body[data-translate-lang="hi"] .transcript-music-only-sub { font-family: 'Noto Sans Devanagari', sans-serif; }
+body[data-translate-lang="th"] .music-only-badge,
+body[data-translate-lang="th"] .transcript-music-only-title,
+body[data-translate-lang="th"] .transcript-music-only-sub { font-family: 'Noto Sans Thai', sans-serif; }
+body[data-translate-lang="el"] .music-only-badge,
+body[data-translate-lang="el"] .transcript-music-only-title,
+body[data-translate-lang="el"] .transcript-music-only-sub { font-family: 'Noto Sans', sans-serif; }

@@ -1,0 +1,296 @@
+/* ═══════════════════════════════════════════════════════════
+   title.css — Video title styles (double-buffer crossfade)
+   Title direction/font is per-display, not from #resultsView.
+   ═══════════════════════════════════════════════════════════
+   font-system: most hardcoded font-family declarations in this file are
+   the per-script title-context-lines + hero-word pinning that's
+   intentional design (script-pure visual consistency for non-Latin
+   titles). Categories:
+
+     1. .ts1-wrap.lang-XX .ts1-top/.ts1-bottom — bilingual columns,
+        per-script body font for the title context lines.
+     2. .ts-display.lang-XX .ts1-top/.ts1-bottom — single-language mode
+        equivalent.
+     3. .ts-display.lang-XX .ts1-hero / .ts1-hero-inline + .ts1-wrap.lang-XX
+        equivalents — the BIG colored hero word, intentionally pinned
+        per-script for visual consistency. CRITICAL: do not migrate
+        these to the cascade. The hero word's whole point is being one
+        face, not mixed-script via fallback.
+     4. Brutalist theme: video-title-text uses Unbounded; Persian title
+        context lines use Lalezar (chunky display Persian face).
+     5. .video-title-text base = var(--font-content-heading).
+
+   Adding a NEW non-Latin language to the title system = add 2 entries
+   (.ts1-wrap.lang-XX and .ts-display.lang-XX) for context lines + 2
+   entries for hero word. Don't try to generalize.
+
+   See docs/_tech/13_LANGUAGE_AND_FONTS.md.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Raw title data (hidden, used as data source) ── */
+.video-title-text { font-family: var(--font-content-heading); font-size: 13px; font-weight: 700; color: var(--text-primary); line-height: 1.35; }
+
+/* ── Title bilingual sub (legacy stacked — kept for reference) ── */
+.title-bilingual-sub { }
+
+/* ── Bilingual side-by-side title (desktop only) ── */
+.ts-display-bilingual {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ts-display-bilingual .ts1-wrap { text-align: center; }
+
+/* Column swap — same pattern as transcript bilingual */
+.ts-display-bilingual.bilingual-cols-swapped .ts1-wrap:first-child { order: 2; }
+.ts-display-bilingual.bilingual-cols-swapped .ts1-wrap:last-child { order: 1; }
+
+/* Per-column direction/font (bilingual columns get lang classes directly) */
+.ts1-wrap.rtl .ts1-top,
+.ts1-wrap.rtl .ts1-bottom,
+.ts1-wrap.rtl .ts1-hero { direction: rtl; text-align: center; }
+
+/* font-system: intentional — title context lines (.ts1-top / .ts1-bottom)
+   pin to a script-pure font face so Latin loanwords inside a non-Latin
+   title also render in that script's font (visual consistency with the
+   hero word). This is the same design intent as the hero per-script
+   pinning further down. Tighter title-context line-height (1.45) instead
+   of the body 1.75 so the hero word doesn't get penalized by inflated
+   panel.scrollHeight in _fitHero. */
+.ts1-wrap.lang-fa .ts1-top, .ts1-wrap.lang-fa .ts1-bottom,
+.ts1-wrap.lang-ur .ts1-top, .ts1-wrap.lang-ur .ts1-bottom,
+.ts1-wrap.lang-ku .ts1-top, .ts1-wrap.lang-ku .ts1-bottom { font-family: 'Vazirmatn', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-ar .ts1-top, .ts1-wrap.lang-ar .ts1-bottom,
+.ts1-wrap.lang-ps .ts1-top, .ts1-wrap.lang-ps .ts1-bottom { font-family: 'Noto Sans Arabic', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-he .ts1-top, .ts1-wrap.lang-he .ts1-bottom { font-family: 'Noto Sans Hebrew', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-zh .ts1-top, .ts1-wrap.lang-zh .ts1-bottom { font-family: 'Noto Sans SC', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-zh-tw .ts1-top, .ts1-wrap.lang-zh-tw .ts1-bottom { font-family: 'Noto Sans TC', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-ja .ts1-top, .ts1-wrap.lang-ja .ts1-bottom { font-family: 'Noto Sans JP', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-ko .ts1-top, .ts1-wrap.lang-ko .ts1-bottom { font-family: 'Noto Sans KR', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-hi .ts1-top, .ts1-wrap.lang-hi .ts1-bottom,
+.ts1-wrap.lang-mr .ts1-top, .ts1-wrap.lang-mr .ts1-bottom,
+.ts1-wrap.lang-ne .ts1-top, .ts1-wrap.lang-ne .ts1-bottom { font-family: 'Noto Sans Devanagari', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-bn .ts1-top, .ts1-wrap.lang-bn .ts1-bottom { font-family: 'Noto Sans Bengali', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-ta .ts1-top, .ts1-wrap.lang-ta .ts1-bottom { font-family: 'Noto Sans Tamil', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-te .ts1-top, .ts1-wrap.lang-te .ts1-bottom { font-family: 'Noto Sans Telugu', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-gu .ts1-top, .ts1-wrap.lang-gu .ts1-bottom { font-family: 'Noto Sans Gujarati', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-kn .ts1-top, .ts1-wrap.lang-kn .ts1-bottom { font-family: 'Noto Sans Kannada', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-ml .ts1-top, .ts1-wrap.lang-ml .ts1-bottom { font-family: 'Noto Sans Malayalam', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-pa .ts1-top, .ts1-wrap.lang-pa .ts1-bottom { font-family: 'Noto Sans Gurmukhi', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-si .ts1-top, .ts1-wrap.lang-si .ts1-bottom { font-family: 'Noto Sans Sinhala', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-th .ts1-top, .ts1-wrap.lang-th .ts1-bottom { font-family: 'Noto Sans Thai', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-lo .ts1-top, .ts1-wrap.lang-lo .ts1-bottom { font-family: 'Noto Sans Lao', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-km .ts1-top, .ts1-wrap.lang-km .ts1-bottom { font-family: 'Noto Sans Khmer', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-my .ts1-top, .ts1-wrap.lang-my .ts1-bottom { font-family: 'Noto Sans Myanmar', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-am .ts1-top, .ts1-wrap.lang-am .ts1-bottom { font-family: 'Noto Sans Ethiopic', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-hy .ts1-top, .ts1-wrap.lang-hy .ts1-bottom { font-family: 'Noto Sans Armenian', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts1-wrap.lang-ka .ts1-top, .ts1-wrap.lang-ka .ts1-bottom { font-family: 'Noto Sans Georgian', 'Unbounded', sans-serif; line-height: 1.45; }
+
+/* ── Double-buffer display host ──
+   Background uses --nav-bg so the title area tracks the active theme's
+   shell color instead of locking to brutalist dark navy. */
+.title-display-host { position: relative; background: var(--nav-bg); isolation: isolate; }
+
+/* ── Rewind B&W → color sweep (title) ── */
+.title-bw::after,
+.title-colorize::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: gray;
+  mix-blend-mode: saturation;
+  pointer-events: none;
+  z-index: 10;
+}
+.title-colorize::after {
+  animation: title-sweep 0.8s ease-out forwards;
+}
+@keyframes title-sweep {
+  0%   { clip-path: inset(0 0 0 0); }
+  100% { clip-path: inset(0 0 0 100%); }
+
+}
+.ts-display-active { position: relative; z-index: 2; }
+.ts-display-standby {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Per-display RTL direction (not from #resultsView) ── */
+.ts-display.rtl .ts1-top,
+.ts-display.rtl .ts1-bottom,
+.ts-display.rtl .ts1-hero { direction: rtl; text-align: center; }
+
+/* font-system: intentional — single-language-mode title context lines.
+   Same script-pure design as the bilingual columns above: Latin loanwords
+   inside a non-Latin title render in that script's font for visual
+   consistency with the hero word. */
+.ts-display.lang-fa .ts1-top, .ts-display.lang-fa .ts1-bottom,
+.ts-display.lang-ur .ts1-top, .ts-display.lang-ur .ts1-bottom,
+.ts-display.lang-ku .ts1-top, .ts-display.lang-ku .ts1-bottom { font-family: 'Vazirmatn', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-ar .ts1-top, .ts-display.lang-ar .ts1-bottom,
+.ts-display.lang-ps .ts1-top, .ts-display.lang-ps .ts1-bottom { font-family: 'Noto Sans Arabic', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-he .ts1-top, .ts-display.lang-he .ts1-bottom { font-family: 'Noto Sans Hebrew', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-zh .ts1-top, .ts-display.lang-zh .ts1-bottom { font-family: 'Noto Sans SC', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-zh-tw .ts1-top, .ts-display.lang-zh-tw .ts1-bottom { font-family: 'Noto Sans TC', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-ja .ts1-top, .ts-display.lang-ja .ts1-bottom { font-family: 'Noto Sans JP', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-ko .ts1-top, .ts-display.lang-ko .ts1-bottom { font-family: 'Noto Sans KR', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-hi .ts1-top, .ts-display.lang-hi .ts1-bottom,
+.ts-display.lang-mr .ts1-top, .ts-display.lang-mr .ts1-bottom,
+.ts-display.lang-ne .ts1-top, .ts-display.lang-ne .ts1-bottom { font-family: 'Noto Sans Devanagari', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-bn .ts1-top, .ts-display.lang-bn .ts1-bottom { font-family: 'Noto Sans Bengali', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-ta .ts1-top, .ts-display.lang-ta .ts1-bottom { font-family: 'Noto Sans Tamil', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-te .ts1-top, .ts-display.lang-te .ts1-bottom { font-family: 'Noto Sans Telugu', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-gu .ts1-top, .ts-display.lang-gu .ts1-bottom { font-family: 'Noto Sans Gujarati', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-kn .ts1-top, .ts-display.lang-kn .ts1-bottom { font-family: 'Noto Sans Kannada', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-ml .ts1-top, .ts-display.lang-ml .ts1-bottom { font-family: 'Noto Sans Malayalam', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-pa .ts1-top, .ts-display.lang-pa .ts1-bottom { font-family: 'Noto Sans Gurmukhi', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-si .ts1-top, .ts-display.lang-si .ts1-bottom { font-family: 'Noto Sans Sinhala', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-th .ts1-top, .ts-display.lang-th .ts1-bottom { font-family: 'Noto Sans Thai', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-lo .ts1-top, .ts-display.lang-lo .ts1-bottom { font-family: 'Noto Sans Lao', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-km .ts1-top, .ts-display.lang-km .ts1-bottom { font-family: 'Noto Sans Khmer', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-my .ts1-top, .ts-display.lang-my .ts1-bottom { font-family: 'Noto Sans Myanmar', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-am .ts1-top, .ts-display.lang-am .ts1-bottom { font-family: 'Noto Sans Ethiopic', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-hy .ts1-top, .ts-display.lang-hy .ts1-bottom { font-family: 'Noto Sans Armenian', 'Unbounded', sans-serif; line-height: 1.45; }
+.ts-display.lang-ka .ts1-top, .ts-display.lang-ka .ts1-bottom { font-family: 'Noto Sans Georgian', 'Unbounded', sans-serif; line-height: 1.45; }
+
+/* ═══════════════════════════════════════════════════════════
+   Hero word per script
+   ═══════════════════════════════════════════════════════════
+   font-system: intentional — the BIG colored hero word is pinned to a
+   single script-pure font so a non-Latin title's hero word renders 100%
+   in that script's face (no mixed-font appearance). This is core visual
+   design and explicitly preserved by the v2.1 plan; do NOT generalize
+   these rules into the cascade.
+
+   Two selectors per script:
+     - .ts-display.lang-X .ts1-hero        single-language mode
+     - .ts1-wrap.lang-X .ts1-hero          bilingual columns
+   .ts1-hero-inline is the same hero rendered inline inside .ts1-top/.ts1-bottom
+   when _buildDisplayHTML chose the inline-merge layout. Both targets share
+   the same per-script font stack so the hero word always uses the right
+   script font regardless of layout.
+   The base .ts1-hero font (Unbounded) is set in home.css; these rules
+   override only for non-Latin scripts. */
+.ts-display.lang-fa .ts1-hero, .ts1-wrap.lang-fa .ts1-hero, .ts-display.lang-fa .ts1-hero-inline, .ts1-wrap.lang-fa .ts1-hero-inline,
+.ts-display.lang-ur .ts1-hero, .ts1-wrap.lang-ur .ts1-hero, .ts-display.lang-ur .ts1-hero-inline, .ts1-wrap.lang-ur .ts1-hero-inline,
+.ts-display.lang-ku .ts1-hero, .ts1-wrap.lang-ku .ts1-hero, .ts-display.lang-ku .ts1-hero-inline, .ts1-wrap.lang-ku .ts1-hero-inline { font-family: 'Vazirmatn', 'Unbounded', sans-serif; }
+.ts-display.lang-ar .ts1-hero, .ts1-wrap.lang-ar .ts1-hero, .ts-display.lang-ar .ts1-hero-inline, .ts1-wrap.lang-ar .ts1-hero-inline,
+.ts-display.lang-ps .ts1-hero, .ts1-wrap.lang-ps .ts1-hero, .ts-display.lang-ps .ts1-hero-inline, .ts1-wrap.lang-ps .ts1-hero-inline { font-family: 'Noto Sans Arabic', 'Unbounded', sans-serif; }
+.ts-display.lang-he .ts1-hero, .ts1-wrap.lang-he .ts1-hero, .ts-display.lang-he .ts1-hero-inline, .ts1-wrap.lang-he .ts1-hero-inline { font-family: 'Noto Sans Hebrew', 'Unbounded', sans-serif; }
+.ts-display.lang-zh .ts1-hero, .ts1-wrap.lang-zh .ts1-hero, .ts-display.lang-zh .ts1-hero-inline, .ts1-wrap.lang-zh .ts1-hero-inline { font-family: 'Noto Sans SC', 'Unbounded', sans-serif; }
+.ts-display.lang-zh-tw .ts1-hero, .ts1-wrap.lang-zh-tw .ts1-hero, .ts-display.lang-zh-tw .ts1-hero-inline, .ts1-wrap.lang-zh-tw .ts1-hero-inline { font-family: 'Noto Sans TC', 'Unbounded', sans-serif; }
+.ts-display.lang-ja .ts1-hero, .ts1-wrap.lang-ja .ts1-hero, .ts-display.lang-ja .ts1-hero-inline, .ts1-wrap.lang-ja .ts1-hero-inline { font-family: 'Noto Sans JP', 'Unbounded', sans-serif; }
+.ts-display.lang-ko .ts1-hero, .ts1-wrap.lang-ko .ts1-hero, .ts-display.lang-ko .ts1-hero-inline, .ts1-wrap.lang-ko .ts1-hero-inline { font-family: 'Noto Sans KR', 'Unbounded', sans-serif; }
+.ts-display.lang-hi .ts1-hero, .ts1-wrap.lang-hi .ts1-hero, .ts-display.lang-hi .ts1-hero-inline, .ts1-wrap.lang-hi .ts1-hero-inline,
+.ts-display.lang-mr .ts1-hero, .ts1-wrap.lang-mr .ts1-hero, .ts-display.lang-mr .ts1-hero-inline, .ts1-wrap.lang-mr .ts1-hero-inline,
+.ts-display.lang-ne .ts1-hero, .ts1-wrap.lang-ne .ts1-hero, .ts-display.lang-ne .ts1-hero-inline, .ts1-wrap.lang-ne .ts1-hero-inline { font-family: 'Noto Sans Devanagari', 'Unbounded', sans-serif; }
+.ts-display.lang-bn .ts1-hero, .ts1-wrap.lang-bn .ts1-hero, .ts-display.lang-bn .ts1-hero-inline, .ts1-wrap.lang-bn .ts1-hero-inline { font-family: 'Noto Sans Bengali', 'Unbounded', sans-serif; }
+.ts-display.lang-ta .ts1-hero, .ts1-wrap.lang-ta .ts1-hero, .ts-display.lang-ta .ts1-hero-inline, .ts1-wrap.lang-ta .ts1-hero-inline { font-family: 'Noto Sans Tamil', 'Unbounded', sans-serif; }
+.ts-display.lang-te .ts1-hero, .ts1-wrap.lang-te .ts1-hero, .ts-display.lang-te .ts1-hero-inline, .ts1-wrap.lang-te .ts1-hero-inline { font-family: 'Noto Sans Telugu', 'Unbounded', sans-serif; }
+.ts-display.lang-gu .ts1-hero, .ts1-wrap.lang-gu .ts1-hero, .ts-display.lang-gu .ts1-hero-inline, .ts1-wrap.lang-gu .ts1-hero-inline { font-family: 'Noto Sans Gujarati', 'Unbounded', sans-serif; }
+.ts-display.lang-kn .ts1-hero, .ts1-wrap.lang-kn .ts1-hero, .ts-display.lang-kn .ts1-hero-inline, .ts1-wrap.lang-kn .ts1-hero-inline { font-family: 'Noto Sans Kannada', 'Unbounded', sans-serif; }
+.ts-display.lang-ml .ts1-hero, .ts1-wrap.lang-ml .ts1-hero, .ts-display.lang-ml .ts1-hero-inline, .ts1-wrap.lang-ml .ts1-hero-inline { font-family: 'Noto Sans Malayalam', 'Unbounded', sans-serif; }
+.ts-display.lang-pa .ts1-hero, .ts1-wrap.lang-pa .ts1-hero, .ts-display.lang-pa .ts1-hero-inline, .ts1-wrap.lang-pa .ts1-hero-inline { font-family: 'Noto Sans Gurmukhi', 'Unbounded', sans-serif; }
+.ts-display.lang-si .ts1-hero, .ts1-wrap.lang-si .ts1-hero, .ts-display.lang-si .ts1-hero-inline, .ts1-wrap.lang-si .ts1-hero-inline { font-family: 'Noto Sans Sinhala', 'Unbounded', sans-serif; }
+.ts-display.lang-th .ts1-hero, .ts1-wrap.lang-th .ts1-hero, .ts-display.lang-th .ts1-hero-inline, .ts1-wrap.lang-th .ts1-hero-inline { font-family: 'Noto Sans Thai', 'Unbounded', sans-serif; }
+.ts-display.lang-lo .ts1-hero, .ts1-wrap.lang-lo .ts1-hero, .ts-display.lang-lo .ts1-hero-inline, .ts1-wrap.lang-lo .ts1-hero-inline { font-family: 'Noto Sans Lao', 'Unbounded', sans-serif; }
+.ts-display.lang-km .ts1-hero, .ts1-wrap.lang-km .ts1-hero, .ts-display.lang-km .ts1-hero-inline, .ts1-wrap.lang-km .ts1-hero-inline { font-family: 'Noto Sans Khmer', 'Unbounded', sans-serif; }
+.ts-display.lang-my .ts1-hero, .ts1-wrap.lang-my .ts1-hero, .ts-display.lang-my .ts1-hero-inline, .ts1-wrap.lang-my .ts1-hero-inline { font-family: 'Noto Sans Myanmar', 'Unbounded', sans-serif; }
+.ts-display.lang-am .ts1-hero, .ts1-wrap.lang-am .ts1-hero, .ts-display.lang-am .ts1-hero-inline, .ts1-wrap.lang-am .ts1-hero-inline { font-family: 'Noto Sans Ethiopic', 'Unbounded', sans-serif; }
+.ts-display.lang-hy .ts1-hero, .ts1-wrap.lang-hy .ts1-hero, .ts-display.lang-hy .ts1-hero-inline, .ts1-wrap.lang-hy .ts1-hero-inline { font-family: 'Noto Sans Armenian', 'Unbounded', sans-serif; }
+.ts-display.lang-ka .ts1-hero, .ts1-wrap.lang-ka .ts1-hero, .ts-display.lang-ka .ts1-hero-inline, .ts1-wrap.lang-ka .ts1-hero-inline { font-family: 'Noto Sans Georgian', 'Unbounded', sans-serif; }
+
+/* ═══════════════════════════════════════════════════════════
+   Mobile overrides
+   ═══════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+  .ts1-channel { display: none; }
+  /* Title host fills all vertical space left in .video-meta (between the
+     top and the controls row), so the title uses the full available height.
+     The hero font is then auto-shrunk in JS (_fitHero) to fit this height.
+     Hard-cap the host (max-height + overflow:hidden) so the title area
+     occupies an identical vertical footprint in every language — without
+     this, longer translations or fonts with taller intrinsic line-heights
+     would push .video-meta past the video iframe's height and shift every
+     panel below (tab-content, floating flag buttons, transcript). */
+  .title-display-host { flex: 1 !important; min-height: 0 !important; max-height: 100% !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; }
+  /* min-height: 0 is the critical bit — flex items default to min-height:auto,
+     which makes them refuse to shrink below their content's intrinsic size.
+     Without this, multi-line translations push the host taller than its
+     allotted space and the parent grows. */
+  .ts-display, .ts1-wrap { width: 100% !important; flex: 1 !important; min-height: 0 !important; display: flex !important; flex-direction: column !important; }
+  /* Mobile padding: previously 4px 26px which left ~52px of unused
+     horizontal width (≈6-7 chars per line). With less padding the text
+     wraps to fewer lines, which both uses more of the column's width
+     AND fixes the top-clip from .title-display-host's overflow:hidden
+     when long English titles overflow vertically. Right side still
+     blends into the video via .video-meta::after's 48px fade. */
+  .ts1-wrap { display: flex !important; flex-direction: column !important; justify-content: center !important; padding: 4px 10px !important; background: transparent !important; }
+  .ts1-rule { display: none !important; }
+  .ts1-top, .ts1-bottom { font-size: clamp(8px, 2.5vw, 11px) !important; }
+  /* Previous: pink outline only — kept commented in case we want to revert */
+  /* .ts1-hero { font-family: 'Unbounded', sans-serif !important; font-weight: 900 !important; font-size: clamp(38px, 8vw, 72px) !important; letter-spacing: -0.04em !important; line-height: 1 !important; margin: clamp(2px, 1vw, 5px) 0 !important; color: transparent !important; -webkit-text-stroke: 2.5px #FF2D78 !important; paint-order: stroke fill !important; } */
+  /* Mobile hero word — route through the same theme tokens as the desktop
+     rule in home.css (--accent2 for fill, --nav-bg for stroke) so the title
+     hero word tracks the active theme on mobile too.
+     font-family intentionally omitted so the per-script hero font rules
+     above (.ts-display.lang-X .ts1-hero) cascade correctly on mobile.
+     Falls back to home.css's .ts1-hero { font-family: 'Unbounded', ... }
+     for Latin-script languages. */
+  .ts1-hero { font-weight: 900 !important; font-size: clamp(38px, 8vw, 72px) !important; letter-spacing: -0.03em !important; line-height: 0.9 !important; margin: clamp(2px, 1vw, 5px) 0 !important; color: var(--accent2) !important; -webkit-text-stroke: 2.5px var(--nav-bg) !important; paint-order: stroke fill !important; }
+  /* Brutalist preservation — signature hot-pink #FF2D78 (brighter than
+     brutalist's --accent2 red #DC2626). Matches the desktop override. */
+  body.theme-brutalist .ts1-hero { color: #FF2D78 !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Brutalist theme overrides
+   ═══════════════════════════════════════════════════════════ */
+
+body.theme-brutalist .video-title-text {
+  /* font-family from theme-level --font-content-heading redefinition (Unbounded). */
+  font-weight: 900;
+  font-size: 16px;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: #0C1E2A;
+}
+body.theme-brutalist .title-bilingual-sub {
+  /* font-family from theme-level --font-content-heading redefinition (Unbounded). */
+  font-weight: 900;
+  font-size: 16px;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+/* font-system: intentional — Brutalist Persian title pinned to Lalezar
+   (a chunky display Persian face) for the brutalist visual character.
+   Same script-pure design as the regular hero pin. */
+body.theme-brutalist .ts-display.lang-fa .ts1-top,
+body.theme-brutalist .ts-display.lang-fa .ts1-bottom {
+  font-family: 'Lalezar', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+body.theme-brutalist .title-bilingual-sub.lang-fa {
+  /* Persian column header in brutalist bilingual — Unbounded for the
+     latin source-side label. Theme handles content font via the role var. */
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+body.theme-brutalist[data-translate-lang="fa"] .title-bilingual-sub {
+  font-family: 'Lalezar', sans-serif;
+  font-weight: 400;
+  font-size: 17px;
+  letter-spacing: 0;
+  line-height: 1.4;
+  font-style: normal;
+}

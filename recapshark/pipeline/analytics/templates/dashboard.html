@@ -1,0 +1,2273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RecapShark BigQuery Analytics</title>
+<!-- Geist (Vercel's geometric sans) — picked via the docs/font-test.html
+     comparison page. Loaded once here, then referenced from the body
+     font-family stack below so every UI surface picks it up. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Light theme palette. Variables let us swap dark/light without touching
+     every rule individually. The hue accents (purple/cyan/orange/red/yellow)
+     are kept vibrant for visual interest; only the neutral chrome flips. */
+  :root {
+    --bg:            #eef1f7;   /* page background — slightly cooler/darker so the white panel above floats */
+    --panel:         #f3f5fa;   /* the big panel that hosts the cards. Tinted just enough that
+                                   white cards visibly lift off it. */
+    --panel-card:    #ffffff;   /* the card surface itself — pure white for max contrast vs panel */
+    --panel-2:       #f8fafd;   /* secondary surface (table rows, sk-card) */
+    --panel-hover:   #e7ebf3;   /* hover surface */
+    --border:        #dde2ec;   /* default 1px borders */
+    --border-strong: #c2cad7;   /* dividers / stronger frames */
+    --shadow:        0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.05);
+
+    --text:          #0f172a;   /* primary text (almost black) */
+    --text-strong:   #1e293b;   /* table cell strong */
+    --text-muted:    #475569;   /* labels, secondary text */
+    --text-faint:    #64748b;   /* tertiary / metadata */
+    --text-fainter:  #94a3b8;   /* placeholders, dots, dividers */
+    --text-disabled: #cbd5e1;   /* disabled / loading text */
+
+    /* Accent hues — same colors as the dark theme, just paired with
+       light-on-tinted backgrounds rather than dark. */
+    --accent-purple: #7c3aed;
+    --accent-cyan:   #0891b2;
+    --accent-orange: #d97706;
+    --accent-red:    #dc2626;
+    --accent-yellow: #ca8a04;
+    --accent-green:  #059669;
+
+    --accent-purple-bg: #f3eaff;
+    --accent-cyan-bg:   #e0f5fb;
+    --accent-orange-bg: #fff1e0;
+    --accent-red-bg:    #fde8e8;
+    --accent-yellow-bg: #fef6d8;
+    --accent-green-bg:  #defcec;
+    /* Phase 4f (2026-04-22) — extra accents used by the new "landed via" and
+       "video lang" chips on session cards. Kept as separate variables so the
+       palette stays editable in one place. */
+    --accent-pink:      #db2777;
+    --accent-pink-bg:   #fce7f3;
+    --accent-teal:      #0d9488;
+    --accent-teal-bg:   #ccfbf1;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    /* Geist (loaded via Google Fonts <link> in <head>) is the chosen UI face
+       — picked from docs/font-test.html. The fallback chain is the same
+       system stack we had before so the page stays sane if the network blocks
+       Google Fonts. */
+    font-family: 'Geist', system-ui, -apple-system, BlinkMacSystemFont,
+                 'Segoe UI Variable Text', 'Inter', 'Segoe UI', Roboto,
+                 'Helvetica Neue', Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 32px;
+  }
+  .top-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-size: 27px;
+    background: linear-gradient(135deg, #b794f4, #00d4ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-right: auto;
+  }
+  .badge {
+    background: #b794f422;
+    color: var(--accent-purple);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .refresh {
+    background: var(--border);
+    border: 1px solid var(--border-strong);
+    color: var(--text-strong);
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+  }
+  .refresh:hover { color: var(--accent-purple); border-color: #b794f455; }
+
+  .filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .florida-pills {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 12px;
+    border-right: 1px solid var(--border);
+  }
+  .fl-label {
+    font-size: 17px;
+    color: var(--accent-orange);
+    font-weight: 600;
+  }
+  .fl-pill {
+    padding: 5px 12px;
+    border-radius: 12px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--panel);
+    color: var(--text-faint);
+    border: 1px solid var(--border);
+    user-select: none;
+    text-decoration: line-through;
+  }
+  .fl-pill:hover { border-color: #ff9f4344; color: var(--text-muted); }
+  .fl-pill.included {
+    background: #ff9f4318;
+    color: var(--accent-orange);
+    border-color: #ff9f4344;
+    text-decoration: none;
+  }
+  .fl-all-pill {
+    padding: 5px 12px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    background: #ff9f4318;
+    color: var(--accent-orange);
+    border: 1px solid #ff9f4366;
+    user-select: none;
+    transition: all 0.15s;
+  }
+  .fl-all-pill:hover { background: #ff9f4322; }
+  .fl-all-pill.off { background: var(--panel); color: var(--text-faint); border-color: var(--border); text-decoration: line-through; }
+
+  .days-pills {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 12px;
+    border-right: 1px solid var(--border);
+  }
+  .days-label {
+    font-size: 17px;
+    color: var(--accent-cyan);
+    font-weight: 600;
+  }
+  .days-pill {
+    padding: 5px 12px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--panel);
+    color: var(--text-faint);
+    border: 1px solid var(--border);
+    user-select: none;
+  }
+  .days-pill:hover { border-color: #00d4ff44; color: var(--text-muted); }
+  .days-pill.active {
+    background: #00d4ff18;
+    color: var(--accent-cyan);
+    border-color: #00d4ff66;
+  }
+
+  /* Phase 4f (2026-04-22): toggle pills for device + landed-via filters.
+     Same shape as days-pills but multi-select instead of single-select —
+     each pill independently toggles its value in/out of the filter. */
+  .toggle-pills {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 12px;
+    border-right: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .tp-label {
+    font-size: 17px;
+    color: var(--accent-pink);
+    font-weight: 600;
+  }
+  .tp-pill {
+    padding: 5px 12px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--panel);
+    color: var(--text-faint);
+    border: 1px solid var(--border);
+    user-select: none;
+  }
+  .tp-pill:hover { border-color: #db277744; color: var(--text-muted); }
+  .tp-pill.active {
+    background: #db277718;
+    color: var(--accent-pink);
+    border-color: #db277766;
+  }
+
+  .filter-dropdown { position: relative; }
+  .filter-btn {
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--border);
+    color: var(--text-strong);
+    border: 1px solid var(--border-strong);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .filter-btn:hover { color: var(--text); border-color: var(--border-strong); }
+  .filter-btn .count {
+    background: #ff6b6b33;
+    color: var(--accent-red);
+    font-size: 15px;
+    padding: 1px 6px;
+    border-radius: 8px;
+  }
+  .filter-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    z-index: 100;
+    min-width: 200px;
+    max-height: 320px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  }
+  .filter-menu.open { display: block; }
+  .filter-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 17px;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+  }
+  .filter-item:hover { background: var(--border); }
+  .filter-item input { accent-color: #b794f4; }
+  .filter-item.excluded { color: var(--accent-red); text-decoration: line-through; }
+  /* iOS-style sliding toggle. Used for the single "Hide me" filter; the
+     legacy checkbox-style .toggle-label rule below is kept for any other
+     toggle-label callers but is no longer used by the filters bar. */
+  .toggle-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--text-muted);
+    font-size: 19px;
+  }
+  .toggle-switch input { display: none; }
+  .toggle-slider {
+    width: 36px;
+    height: 20px;
+    background: #4a5568;
+    border-radius: 20px;
+    position: relative;
+    transition: background 0.18s ease;
+    flex-shrink: 0;
+  }
+  .toggle-slider::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 16px; height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.18s ease;
+  }
+  .toggle-switch input:checked + .toggle-slider { background: #b794f4; }
+  .toggle-switch input:checked + .toggle-slider::after { transform: translateX(16px); }
+  /* Push the lone "Hide me" toggle to the right edge of the top bar so it
+     sits next to the Last-sync badge instead of its own filter row. */
+  .top-bar-toggle { margin-left: auto; }
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 17px;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+  }
+  .toggle-label input { accent-color: #b794f4; }
+
+  .hero {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .hero-card {
+    background: linear-gradient(135deg, var(--panel) 0%, var(--panel-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-card.primary {
+    border-color: var(--accent-cyan);
+    background: linear-gradient(135deg, var(--accent-cyan-bg) 0%, var(--panel) 100%);
+  }
+  .hero-card .label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-faint);
+    margin-bottom: 6px;
+  }
+  .hero-card.primary .label { color: var(--accent-cyan); }
+  .hero-card .value {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero-card.primary .value { font-size: 48px; color: var(--text); }
+  .hero-card .sub {
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .hero-card.loading .value { color: var(--text-disabled); opacity: 0.5; }
+
+  .suspect-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #ffd60018;
+    color: var(--accent-yellow);
+    border: 1px solid #ffd60055;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 6px;
+  }
+  .suspect-actions {
+    display: inline-flex;
+    gap: 4px;
+    margin-left: 6px;
+  }
+  .suspect-btn {
+    background: var(--border);
+    border: 1px solid var(--border-strong);
+    color: var(--text-strong);
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .suspect-btn.confirm:hover { color: var(--accent-cyan); border-color: #00d4ff66; background: #00d4ff18; }
+  .suspect-btn.revoke:hover  { color: var(--accent-red); border-color: #ff6b6b66; background: #ff6b6b18; }
+  .suspect-row td { background: #ffd60008; }
+
+  /* Sessions tab — per-session cards */
+  .sess-list { display: flex; flex-direction: column; gap: 10px; }
+  /* ---- Session card ----------------------------------------------------
+     Visual goal: each card reads like a small story tile, not a debug log.
+     The header row is intentionally typographic (date is bigger and bolder
+     than the prose, duration is a colored pill) so the eye lands on "when"
+     and "how long" before reading the sentence.
+
+     Mint palette: re-declares the dashboard's --text*, --border*, and
+     --accent-* variables LOCALLY on .sess-card. Because CSS variables
+     cascade, every descendant (narrative, chips, video links, etc.)
+     resolves these new values automatically — no rule-by-rule rewrite.
+     The rest of the dashboard (top bar, hero strip, panel tabs, footer,
+     tables) keeps its original :root values and is unaffected.
+  */
+  .sess-card {
+    --panel-card:    #f4faf6;
+    --border:        #cfe4d5;
+    --border-strong: #aacbb4;
+    --text:          #0e1f15;
+    --text-strong:   #1c2c22;
+    --text-muted:    #3f5a48;
+    --text-faint:    #5e7867;
+    --text-fainter:  #90a89a;
+    --accent-purple: #7c3aed;  --accent-purple-bg: #efe6f9;
+    --accent-cyan:   #0891b2;  --accent-cyan-bg:   #dbf0f5;
+    --accent-orange: #d97706;  --accent-orange-bg: #faecd1;
+    --accent-red:    #dc2626;  --accent-red-bg:    #f9dfdf;
+    --accent-yellow: #a16207;  --accent-yellow-bg: #f4ebc1;
+    --accent-green:  #15803d;  --accent-green-bg:  #daf0d6;
+
+    background: var(--panel-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 14px;
+    padding: 18px 22px 16px;
+    /* Cursor stays default (text/arrow) — the card itself is no longer a
+       single big click target. Only the interactive bits inside it (chips,
+       links, suspect actions, uid) react to clicks. */
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    box-shadow: 0 1px 2px rgba(20, 50, 30, 0.05);
+  }
+  .sess-card:hover {
+    border-color: var(--border-strong);
+    box-shadow: 0 4px 14px rgba(20, 50, 30, 0.10);
+  }
+  .sess-card.suspect-card {
+    /* Suspect cards keep their amber tint so they remain visually distinct
+       from regular mint cards — owner-confirmation UI shouldn't blend in. */
+    background: #fffaeb;
+    border-color: #fde68a;
+  }
+  .sess-card.suspect-card:hover { border-color: #fcd34d; }
+
+  /* Header row: date block (left) | flex spacer | duration pill | uid (right) */
+  .sess-row1 {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .sess-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  /* Date block — distinct from the prose typography. Stacked layout puts the
+     human "Apr 21 · 10:17 PM" up top in a bold typographic style and the
+     relative "18h ago" underneath in a tiny uppercase tertiary label. */
+  .sess-when {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+                 'Inter', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+  }
+  .sess-when .when-main {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .sess-when .when-main .when-sep { color: var(--text-fainter); margin: 0 4px; font-weight: 400; }
+  .sess-when .when-ago {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-fainter);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .sess-dot { display: none; }   /* legacy separator dots — no longer needed */
+
+  /* Duration as a solid green pill so it reads as the headline metric. */
+  .sess-duration {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 11px;
+    background: var(--accent-green-bg);
+    color: var(--accent-green);
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+  }
+  .sess-stat { color: var(--text-muted); }
+  .sess-stat b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .sess-uid {
+    color: var(--text-fainter); font-family: ui-monospace, monospace; font-size: 12px;
+    margin-left: auto; cursor: pointer;
+    letter-spacing: 0;
+  }
+  .sess-uid:hover { color: var(--accent-purple); text-decoration: underline; }
+
+  .sess-row2 {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    color: var(--text-muted);
+  }
+  /* Phase 6: user-profile modal. Centered card on a dimmed backdrop; sessions
+     inside reuse .sess-card so 5a–5e narratives render identically. */
+  .profile-backdrop {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(15, 23, 42, 0.45);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 40px 16px;
+    overflow-y: auto;
+    backdrop-filter: blur(2px);
+  }
+  .profile-modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 880px;
+    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.18);
+    display: flex; flex-direction: column;
+    max-height: calc(100vh - 80px);
+  }
+  .profile-header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .profile-title-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+  }
+  .profile-title {
+    font-size: 21px; font-weight: 600; color: var(--text);
+  }
+  .profile-uid-mono {
+    font-family: ui-monospace, monospace; font-size: 16px; color: var(--text-faint);
+    background: var(--panel-2); padding: 3px 8px; border-radius: 6px;
+    overflow-wrap: anywhere;
+  }
+  .profile-actions {
+    margin-left: auto; display: flex; align-items: center; gap: 6px;
+  }
+  .profile-btn {
+    background: var(--panel); color: var(--text-muted);
+    border: 1px solid var(--border); border-radius: 6px;
+    font-size: 16px; font-weight: 600;
+    padding: 5px 10px; cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .profile-btn:hover { background: var(--border); color: var(--text); border-color: var(--border-strong); }
+  .profile-btn.profile-close {
+    font-size: 23px; line-height: 1; padding: 2px 10px 4px;
+    color: var(--text-faint);
+  }
+  .profile-stats {
+    display: flex; flex-wrap: wrap; gap: 14px;
+    font-size: 17px; color: var(--text-muted);
+  }
+  .profile-stat {
+    display: inline-flex; align-items: baseline; gap: 5px;
+  }
+  .profile-stat b { color: var(--text); font-variant-numeric: tabular-nums; font-size: 18px; }
+  .profile-stat-divider { color: var(--border-strong); }
+  .profile-suspect { color: var(--accent-yellow); }
+  .profile-body {
+    padding: 16px 20px 20px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .profile-body .err { color: var(--accent-red); padding: 12px 0; }
+  /* Tighten session cards inside the modal to fit more in view. */
+  .profile-body .sess-card { padding: 12px 14px; }
+  .profile-body .sess-narrative { font-size: 17.5px; margin-top: 8px; }
+
+  @media (max-width: 600px) {
+    .profile-backdrop { padding: 12px 6px; }
+    .profile-modal { max-height: calc(100vh - 24px); }
+    .profile-stats { gap: 8px; font-size: 16px; }
+    .profile-uid-mono { font-size: 15px; }
+  }
+
+  /* Prose narrative — the "headline" of the card. Same Geist face as the
+     rest of the card (picked from docs/font-test.html option 4 "All Geist"),
+     so the prose visually unifies with the metadata above and the chips
+     below instead of fighting them. The thin left accent border anchors the
+     block and adds a tiny pop of color. */
+  .sess-narrative {
+    margin-top: 14px;
+    margin-bottom: 4px;
+    padding: 2px 0 2px 14px;
+    border-left: 3px solid var(--accent-purple);
+    color: var(--text);
+    font-family: 'Geist', system-ui, -apple-system, BlinkMacSystemFont,
+                 'Segoe UI Variable Text', 'Inter', 'Segoe UI', sans-serif;
+    font-size: 17px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 1.55;
+    letter-spacing: -0.015em;
+  }
+  .sess-narrative::before, .sess-narrative::after { content: none; }
+
+  /* Chips — fully rounded pills, slightly more padded so they look intentional
+     rather than crammed. Tinted background per category, no neutral grey. */
+  .sess-tag {
+    background: var(--panel-2);
+    color: var(--text-muted);
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 1.35;
+    border: 1px solid transparent;
+  }
+  .sess-tag.geo    { color: var(--accent-orange); background: var(--accent-orange-bg); }
+  .sess-tag.device { color: var(--accent-cyan);   background: var(--accent-cyan-bg); }
+  .sess-tag.count  { color: var(--accent-green);  background: var(--accent-green-bg); }
+  .sess-tag.chat   {
+    color: var(--accent-yellow); background: var(--accent-yellow-bg);
+    cursor: pointer; transition: background 0.12s;
+  }
+  .sess-tag.chat:hover { background: #fceec3; }
+  .sess-tag.chat.open  { background: var(--accent-yellow); color: #fff; }
+  .sess-tag.lang   { color: var(--accent-red);    background: var(--accent-red-bg); }
+  /* Phase 4f (2026-04-22): landed-via + video-lang chips. The landed chip
+     uses pink so it stands out from country/city orange; video-lang uses
+     teal so it's distinguishable from the user-translation lang chip (red). */
+  .sess-tag.landed   { color: var(--accent-pink); background: var(--accent-pink-bg); }
+  .sess-tag.vidlang  { color: var(--accent-teal); background: var(--accent-teal-bg); }
+  .sess-tag.video  {
+    color: var(--accent-purple); background: var(--accent-purple-bg);
+    padding: 4px 10px;
+    border-radius: 8px;       /* rectangular for video chips so the long title doesn't look pill-warped */
+  }
+  .sess-tag.video:hover { background: #ede0ff; }
+  .sess-tag.video .vid-id { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: 12px; opacity: 0.85; }
+  .sess-tag.empty  { color: var(--text-fainter); background: var(--panel-2); border-color: var(--border); }
+  /* Title rendered inline next to the YouTube ID. */
+  .sess-vid-title {
+    margin-left: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter',
+                 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+    color: var(--text);
+    font-weight: 600;
+    font-size: 13px;
+    max-width: 420px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .sess-vid-channel { color: var(--text-faint); font-weight: 500; }
+  /* Third row holds the wide video chips so they wrap independently of the
+     narrower geo/device/count chips on row 2. */
+  .sess-row3 {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+
+  /* Inline chat-detail panel — opens when the user clicks the yellow "N chat"
+     chip. Each message is shown as a quote-bubble with timestamp on top.
+     Closed (display:none) by default; toggled via JS by adding/removing the
+     .open class on the parent .sess-tag.chat. */
+  .sess-chat {
+    display: none;
+    margin-top: 12px;
+    padding: 14px 16px;
+    background: #fef9e6;
+    border: 1px solid #fde68a;
+    border-left: 3px solid var(--accent-yellow);
+    border-radius: 10px;
+  }
+  .sess-chat.open { display: block; }
+  .sess-chat-msg + .sess-chat-msg { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #fcd96a55; }
+  .sess-chat-when {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #a16207;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .sess-chat-text {
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .sess-chat-empty { color: var(--text-faint); font-style: italic; font-size: 14px; }
+  /* Inline highlighters injected by colorizeNarrative() in JS. Each one is a
+     subtle accent so the prose reads as a flowing sentence with key facts
+     highlighted, not as a bag of badges. */
+  .nv-geo    { color: var(--accent-orange); font-weight: 600; font-style: normal; }
+  .nv-device { color: var(--accent-cyan);   font-weight: 600; font-style: normal; }
+  .nv-num    { color: var(--accent-purple); font-weight: 700; font-style: normal; }
+  .nv-time   { color: var(--accent-green);  font-weight: 600; font-style: normal; }
+  .nv-tab    { color: var(--accent-yellow); font-weight: 600; font-style: normal; }
+
+  .sess-detail {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .sess-detail .loading { color: var(--text-faint); font-size: 17px; padding: 8px 0; }
+  .sess-detail table { font-size: 16px; }
+
+  .load-more {
+    margin-top: 16px;
+    width: 100%;
+    padding: 10px;
+    background: var(--panel);
+    border: 1px dashed var(--border-strong);
+    color: var(--text-muted);
+    font-size: 17px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .load-more:hover { color: var(--accent-cyan); border-color: #00d4ff66; background: #00d4ff08; }
+  .load-more:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+  .panel-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-tab {
+    padding: 10px 24px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-faint);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .panel-tab:hover { color: var(--text-muted); }
+  .panel-tab.active {
+    color: var(--accent-purple);
+    border-bottom-color: var(--accent-purple);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 17px; }
+  th {
+    text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border);
+    color: var(--text-faint); font-weight: 500; text-transform: uppercase; font-size: 15px; letter-spacing: 0.5px;
+  }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--panel-2); vertical-align: top; }
+  tr:hover td { background: var(--panel-hover); }
+  .ts { color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ev { color: var(--accent-purple); font-weight: 600; }
+  .uid { color: var(--text-faint); font-family: ui-monospace, monospace; font-size: 16px; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--text-fainter); }
+  .vid { color: var(--accent-cyan); text-decoration: none; font-family: ui-monospace, monospace; font-size: 16px; }
+  .vid:hover { text-decoration: underline; }
+  .loading { color: var(--text-faint); padding: 20px; text-align: center; }
+  .err { color: var(--accent-red); padding: 20px; }
+
+  /* Phase 8a: skeleton placeholders for the initial bundle fetch only.
+     Matches sess-card / table-row dimensions so the layout doesn't reflow
+     when real data arrives. Shimmer = a 1.6s gradient sweep, kept subtle so
+     it reads as "loading" without distracting on a slow connection. */
+  @keyframes sk-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .sk-bar {
+    background: linear-gradient(90deg, var(--border) 0%, var(--border-strong) 50%, var(--border) 100%);
+    background-size: 200% 100%;
+    animation: sk-shimmer 1.6s ease-in-out infinite;
+    border-radius: 4px;
+    height: 12px;
+    display: inline-block;
+  }
+  .sk-card {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 8px;
+  }
+  .sk-card .sk-row { display: flex; gap: 10px; align-items: center; margin: 6px 0; }
+  .sk-card .sk-row .sk-bar { height: 14px; }
+  td .sk-bar { height: 12px; min-width: 40px; }
+
+  .user-row { cursor: pointer; }
+  .user-row.expanded td { background: var(--accent-purple-bg); }
+  .user-row.expanded .uid { color: var(--accent-purple); }
+  /* Phase 6: clicking the UID cell opens the profile modal (separate from the
+     row's timeline-toggle behavior). Hover hint mirrors .sess-uid. */
+  .uid.profile-link { cursor: pointer; transition: color 0.15s; }
+  .uid.profile-link:hover { color: var(--accent-purple); text-decoration: underline; }
+  .timeline-row td { padding: 0; background: var(--panel); }
+  .timeline-wrap { padding: 12px 20px; border-left: 3px solid #b794f4; margin: 4px 0 4px 12px; }
+  .timeline-header {
+    display: flex; gap: 16px; font-size: 16px; color: var(--text-muted);
+    margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+  .timeline-header b { color: var(--text-strong); font-weight: 600; }
+  .timeline-event {
+    display: grid;
+    grid-template-columns: 90px 130px 1fr;
+    gap: 12px;
+    padding: 4px 8px;
+    font-size: 17px;
+    border-radius: 4px;
+  }
+  .timeline-event:hover { background: var(--panel-hover); }
+  .timeline-event .te-ts { color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  .timeline-event .te-name { color: var(--accent-purple); font-weight: 600; }
+  .timeline-event .te-detail { color: var(--text-muted); }
+  .session-divider {
+    margin: 8px 0;
+    padding: 4px 8px;
+    font-size: 15px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-top: 1px dashed var(--border);
+  }
+
+  /* Phase 4c — footer w/ ETL health badge + source-of-truth indicator */
+  .footer {
+    margin-top: 18px;
+    padding: 10px 16px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+    color: var(--text-faint);
+  }
+  .footer-spacer { flex: 1; }
+  .footer-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+  .footer-label { color: var(--text-muted); font-weight: 600; }
+  .footer-value { color: var(--text-muted); }
+  .footer-dot { color: var(--text-fainter); }
+  /* Status colors driven by JS adding .ok / .warn / .err to the badge */
+  .footer-badge.ok   { border-color: #00d4ff44; }
+  .footer-badge.ok   .footer-dot { color: var(--accent-cyan); }
+  .footer-badge.ok   .footer-value { color: var(--accent-cyan); }
+  .footer-badge.warn { border-color: #ffd60055; }
+  .footer-badge.warn .footer-dot { color: var(--accent-yellow); }
+  .footer-badge.warn .footer-value { color: var(--accent-yellow); }
+  .footer-badge.err  { border-color: #ff6b6b66; background: #ff6b6b08; }
+  .footer-badge.err  .footer-dot { color: var(--accent-red); }
+  .footer-badge.err  .footer-value { color: var(--accent-red); }
+  .footer-meta { color: var(--text-faint); }
+  .footer-source { color: var(--text-muted); font-family: ui-monospace, monospace; }
+  .footer-source.supabase { color: var(--accent-purple); }
+  .footer-source.bq       { color: var(--accent-cyan); }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>RecapShark Analytics</h1>
+  <span class="footer-badge" id="etlBadge" title="Last time session data was copied from BigQuery to Supabase">
+    <span class="footer-dot">&bull;</span>
+    <span class="footer-label">Last sync:</span>
+    <span class="footer-value" id="etlBadgeValue">checking&hellip;</span>
+  </span>
+  <span class="footer-meta" id="footerSourceWrap" title="Where this page is reading session data from right now">
+    Showing: <span id="footerSource" class="footer-source">&mdash;</span>
+  </span>
+  <label class="toggle-switch top-bar-toggle" title="Hide sessions tagged as the owner (you). Owner identification uses your Supabase login UUID — see docs/_tech/06_ANALYTICS.md.">
+    <input type="checkbox" id="hideOwner" checked>
+    <span class="toggle-slider"></span>
+    <span class="toggle-text">Hide me</span>
+  </label>
+  <label class="toggle-switch" title="Only show sessions where the visitor actually pasted at least one video.">
+    <input type="checkbox" id="requireVideos" checked>
+    <span class="toggle-slider"></span>
+    <span class="toggle-text">Has videos</span>
+  </label>
+  <label class="toggle-switch" title="Only show sessions where the visitor added a translation language (i.e. they used the language panel beyond the video's own language).">
+    <input type="checkbox" id="requireExtraLang">
+    <span class="toggle-slider"></span>
+    <span class="toggle-text">Added a language</span>
+  </label>
+  <label class="toggle-switch" title="Only show sessions that include at least one chat message (the visitor talked to the assistant).">
+    <input type="checkbox" id="requireChat">
+    <span class="toggle-slider"></span>
+    <span class="toggle-text">Has chat</span>
+  </label>
+</div>
+
+<div class="hero" id="hero">
+  <div class="hero-card primary loading" id="heroUsers">
+    <div class="label">Unique visitors</div>
+    <div class="value">0</div>
+    <div class="sub" id="heroUsersSub">last 7 days</div>
+  </div>
+  <div class="hero-card loading" id="heroSessions">
+    <div class="label">Sessions</div>
+    <div class="value">0</div>
+    <div class="sub">distinct ga_session_id</div>
+  </div>
+  <div class="hero-card loading" id="heroAvgDuration">
+    <div class="label">Avg session</div>
+    <div class="value">0s</div>
+    <div class="sub">across all sessions</div>
+  </div>
+  <div class="hero-card loading" id="heroCountries">
+    <div class="label">Countries</div>
+    <div class="value">0</div>
+    <div class="sub">distinct geo.country</div>
+  </div>
+</div>
+
+<div class="filters">
+  <div class="days-pills" id="daysPills">
+    <span class="days-label">Range:</span>
+    <span class="days-pill active" data-days="1">Today</span>
+    <span class="days-pill" data-days="3">3d</span>
+    <span class="days-pill" data-days="7">7d</span>
+    <span class="days-pill" data-days="30">30d</span>
+    <span class="days-pill" data-days="90">90d</span>
+  </div>
+  <div class="florida-pills" id="floridaPills">
+    <span class="fl-label">Florida:</span>
+    <span class="fl-all-pill off" id="flAllPill">ALL</span>
+  </div>
+  <div class="filter-dropdown" id="cityFilter"></div>
+  <div class="filter-dropdown" id="countryFilter"></div>
+  <!-- Phase 4f (2026-04-22): device + how-they-landed filters. Tiny fixed
+       enums rendered as click-to-toggle pills (same UX as the date-range
+       pills). Active pill = include; greyed pill = exclude. Default: all
+       active (= show all). -->
+  <div class="toggle-pills" id="devicePills">
+    <span class="tp-label">Device:</span>
+  </div>
+  <div class="toggle-pills" id="landedPills">
+    <span class="tp-label">Arrived:</span>
+  </div>
+</div>
+<div class="panel">
+  <div class="panel-tabs">
+    <span class="panel-tab active" data-tab="sessions">Sessions</span>
+    <span class="panel-tab" data-tab="users">Users</span>
+    <span class="panel-tab" data-tab="feed">Live Feed</span>
+  </div>
+
+  <div id="sessionsPane">
+    <div class="sess-list" id="sessionsList">
+      <!-- Phase 8a: skeleton cards on initial paint. Replaced as soon as the
+           bundle returns and loadSessions(true, preloaded) clears innerHTML. -->
+      <div class="sk-card">
+        <div class="sk-row"><span class="sk-bar" style="width:90px"></span><span class="sk-bar" style="width:60px"></span><span class="sk-bar" style="width:80px"></span></div>
+        <div class="sk-row"><span class="sk-bar" style="flex:1"></span></div>
+        <div class="sk-row"><span class="sk-bar" style="width:120px"></span><span class="sk-bar" style="width:140px"></span></div>
+      </div>
+      <div class="sk-card">
+        <div class="sk-row"><span class="sk-bar" style="width:80px"></span><span class="sk-bar" style="width:50px"></span><span class="sk-bar" style="width:90px"></span></div>
+        <div class="sk-row"><span class="sk-bar" style="flex:1"></span></div>
+        <div class="sk-row"><span class="sk-bar" style="width:100px"></span><span class="sk-bar" style="width:160px"></span></div>
+      </div>
+      <div class="sk-card">
+        <div class="sk-row"><span class="sk-bar" style="width:110px"></span><span class="sk-bar" style="width:55px"></span><span class="sk-bar" style="width:70px"></span></div>
+        <div class="sk-row"><span class="sk-bar" style="flex:1"></span></div>
+        <div class="sk-row"><span class="sk-bar" style="width:130px"></span><span class="sk-bar" style="width:120px"></span></div>
+      </div>
+    </div>
+    <button class="load-more" id="sessionsMore" style="display:none">Load more</button>
+  </div>
+
+  <div id="feedPane" style="display:none">
+    <table>
+      <thead><tr>
+        <th>Time</th><th>Event</th><th>User</th><th>Device</th><th>City</th><th>Country</th><th>Detail</th>
+      </tr></thead>
+      <tbody id="feedBody"><tr><td colspan="7" class="loading">Click the Live Feed tab to load</td></tr></tbody>
+    </table>
+  </div>
+
+  <div id="usersPane" style="display:none">
+    <table>
+      <thead><tr>
+        <th>User</th><th>Device</th><th>OS</th><th>Browser</th><th>City</th><th>Country</th>
+        <th class="num">Events</th><th class="num">Sessions</th><th>First Seen</th><th>Last Seen</th>
+      </tr></thead>
+      <!-- Phase 8a: skeleton rows on initial paint. Replaced when the bundle
+           returns and loadUsers(preloaded) overwrites tbody.innerHTML. -->
+      <tbody id="usersBody">
+        <tr><td><span class="sk-bar" style="width:60px"></span></td><td><span class="sk-bar" style="width:50px"></span></td><td><span class="sk-bar" style="width:60px"></span></td><td><span class="sk-bar" style="width:55px"></span></td><td><span class="sk-bar" style="width:70px"></span></td><td><span class="sk-bar" style="width:60px"></span></td><td class="num"><span class="sk-bar" style="width:30px"></span></td><td class="num"><span class="sk-bar" style="width:30px"></span></td><td><span class="sk-bar" style="width:80px"></span></td><td><span class="sk-bar" style="width:80px"></span></td></tr>
+        <tr><td><span class="sk-bar" style="width:60px"></span></td><td><span class="sk-bar" style="width:50px"></span></td><td><span class="sk-bar" style="width:60px"></span></td><td><span class="sk-bar" style="width:55px"></span></td><td><span class="sk-bar" style="width:70px"></span></td><td><span class="sk-bar" style="width:60px"></span></td><td class="num"><span class="sk-bar" style="width:30px"></span></td><td class="num"><span class="sk-bar" style="width:30px"></span></td><td><span class="sk-bar" style="width:80px"></span></td><td><span class="sk-bar" style="width:80px"></span></td></tr>
+        <tr><td><span class="sk-bar" style="width:60px"></span></td><td><span class="sk-bar" style="width:50px"></span></td><td><span class="sk-bar" style="width:60px"></span></td><td><span class="sk-bar" style="width:55px"></span></td><td><span class="sk-bar" style="width:70px"></span></td><td><span class="sk-bar" style="width:60px"></span></td><td class="num"><span class="sk-bar" style="width:30px"></span></td><td class="num"><span class="sk-bar" style="width:30px"></span></td><td><span class="sk-bar" style="width:80px"></span></td><td><span class="sk-bar" style="width:80px"></span></td></tr>
+        <tr><td><span class="sk-bar" style="width:60px"></span></td><td><span class="sk-bar" style="width:50px"></span></td><td><span class="sk-bar" style="width:60px"></span></td><td><span class="sk-bar" style="width:55px"></span></td><td><span class="sk-bar" style="width:70px"></span></td><td><span class="sk-bar" style="width:60px"></span></td><td class="num"><span class="sk-bar" style="width:30px"></span></td><td class="num"><span class="sk-bar" style="width:30px"></span></td><td><span class="sk-bar" style="width:80px"></span></td><td><span class="sk-bar" style="width:80px"></span></td></tr>
+        <tr><td><span class="sk-bar" style="width:60px"></span></td><td><span class="sk-bar" style="width:50px"></span></td><td><span class="sk-bar" style="width:60px"></span></td><td><span class="sk-bar" style="width:55px"></span></td><td><span class="sk-bar" style="width:70px"></span></td><td><span class="sk-bar" style="width:60px"></span></td><td class="num"><span class="sk-bar" style="width:30px"></span></td><td class="num"><span class="sk-bar" style="width:30px"></span></td><td><span class="sk-bar" style="width:80px"></span></td><td><span class="sk-bar" style="width:80px"></span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Phase 6: cross-visit user profile modal. Opened by clicking any UID badge
+     (in a session card or users-table row). Renders aggregate stats + the full
+     session list with their narratives — single drill-down for "who is this?". -->
+<div class="profile-backdrop" id="profileBackdrop" style="display:none">
+  <div class="profile-modal" role="dialog" aria-labelledby="profileTitle">
+    <div class="profile-header">
+      <div class="profile-title-row">
+        <span class="profile-title" id="profileTitle">Visitor</span>
+        <span class="profile-uid-mono" id="profileUidMono"></span>
+        <span class="profile-actions">
+          <button class="profile-btn" id="profileCopyBtn" title="Copy full UID">Copy</button>
+          <button class="profile-btn profile-close" id="profileCloseBtn" title="Close (Esc)">&times;</button>
+        </span>
+      </div>
+      <div class="profile-stats" id="profileStats"></div>
+    </div>
+    <div class="profile-body" id="profileBody">
+      <div class="loading">Loading\u2026</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const FACETS = {{FACETS_JSON}};
+const excludedCities = new Set(['Forest City', 'Orlando']);
+const excludedCountries = new Set();
+const excludedDevices = new Set();
+const excludedLanded = new Set();
+const floridaCities = FACETS.florida_cities || [];
+const allDevices = FACETS.devices || ['mobile', 'desktop', 'tablet', 'other'];
+const allLandedVia = FACETS.landed_via || ['direct', 'search', 'social', 'referral', 'other'];
+let currentDays = 1;
+
+// ===== Owner JWT helper (Phase-1 cleanup, 2026-05-07) =====
+// Mutation routes (POST /owners/scan, /confirm, /revoke, /etl/sessions/run)
+// require Depends(require_owner_jwt) on the backend — see pipeline/owner_routes.py.
+// We piggyback on the main app's Supabase session: supabase-js stores it in
+// localStorage under key 'rs-supabase-auth' (set in src/js/owner/supabase-client.js).
+// Reading it directly avoids loading the full @supabase/supabase-js bundle into
+// this dashboard just to fetch a token we already have on disk.
+function _ownerAccessToken() {
+  try {
+    const raw = localStorage.getItem('rs-supabase-auth');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // supabase-js v2 shape: { access_token, refresh_token, expires_at, ... }
+    // (older v1 shape wrapped it in { currentSession: {...} } — handle both
+    // defensively so a stale localStorage entry doesn't break the dashboard.)
+    const tok = parsed && (parsed.access_token
+      || (parsed.currentSession && parsed.currentSession.access_token));
+    return tok || null;
+  } catch (_) { return null; }
+}
+
+async function _authedFetch(url, opts) {
+  opts = opts || {};
+  const token = _ownerAccessToken();
+  const headers = Object.assign({}, opts.headers || {});
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const res = await fetch(url, Object.assign({}, opts, { headers }));
+  if (res.status === 401) {
+    // Make the failure mode obvious — the only reason mutations 401 is no/expired
+    // owner session. The dashboard is solo-only so a one-line nudge is enough.
+    alert('Owner login required. Sign in at https://recapshark.com first, then reload this page.');
+  }
+  return res;
+}
+
+// ===== Phase 8a — bundle cache =====
+// One round-trip to /dashboard/bundle hydrates overview + sessions + users + etl.
+// Keyed by the full filter signature (buildQS output) so any filter or date-pill
+// change is a separate cache slot. Tab switches render from cache with no
+// fetch — that's the whole point of the bundle.
+const bundleCache = new Map();
+const BUNDLE_SESSIONS_LIMIT = 50;
+const BUNDLE_USERS_LIMIT = 100;
+
+async function loadBundle(qs, opts) {
+  // opts.force = true: bypass cache (used by background refresh + manual reload).
+  // Returns the bundle so the caller can decide what to render.
+  opts = opts || {};
+  if (!opts.force) {
+    const hit = bundleCache.get(qs);
+    if (hit) return hit;
+  }
+  const url = '/api/analytics/bq/dashboard/bundle?' + qs
+    + '&sessions_limit=' + BUNDLE_SESSIONS_LIMIT
+    + '&users_limit=' + BUNDLE_USERS_LIMIT;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const bundle = await res.json();
+  bundleCache.set(qs, bundle);
+  // Phase 8a: any actual fetch (manual or silent) resets the silent-refresh
+  // clock so we don't fire a background refresh moments after the user already
+  // triggered one via a filter change.
+  lastBundleAt = Date.now();
+  resetRefreshTimer();
+  return bundle;
+}
+
+function renderFromBundle(bundle) {
+  // Phase 8a: render the hero + ETL badge AND both data tabs from the bundle.
+  // Inactive tabs are hidden via CSS (display:none) but their DOM is built so
+  // a tab switch is a pure CSS toggle — truly instant, no fetch, no render
+  // delay. Live Feed isn't in the bundle (debug firehose, kept live).
+  if (bundle.overview && !bundle.overview.error) {
+    loadOverview(bundle.overview);
+  } else if (bundle.overview && bundle.overview.error) {
+    // Surface the failure on the hero strip instead of leaving the placeholder
+    // "0" values in place. Silently-failing zeros look like "no data" and ate
+    // a debugging session — never again.
+    console.error('overview bundle returned error', bundle.overview.error);
+    ['heroUsers', 'heroSessions', 'heroAvgDuration', 'heroCountries'].forEach(id => {
+      const c = document.getElementById(id);
+      if (!c) return;
+      c.classList.remove('loading');
+      const v = c.querySelector('.value');
+      if (v) v.textContent = '!';
+    });
+  }
+  if (bundle.etl     && !bundle.etl.error)     loadEtlBadge(bundle.etl);
+  if (bundle.sessions && !bundle.sessions.error) loadSessions(true, bundle.sessions);
+  if (bundle.users    && !bundle.users.error)    loadUsers(bundle.users);
+}
+
+// ===== Phase 8a — silent background refresh =====
+// Every 30 min, OR when the browser tab becomes visible after being hidden,
+// re-fetch the bundle for the current filter signature and swap the cache.
+// "Silent" = no loading spinner, no DOM disruption — render path uses preloaded
+// data (loadX(preloaded) skips the loading text). User just sees the numbers
+// quietly update as the new bundle replaces the stale one in cache.
+const REFRESH_INTERVAL_MS = 30 * 60 * 1000;
+const VISIBILITY_REFRESH_MIN_AGE_MS = 5 * 60 * 1000;
+let lastBundleAt = 0;
+let refreshTimer = null;
+
+async function silentRefresh() {
+  // Re-fetch the bundle for whatever the active filter signature is right now.
+  // Forces a cache bypass so we get fresh data, then swaps the cache and
+  // re-renders. Failures are swallowed (logged) — the user keeps seeing the
+  // old cached data, which is the correct behavior for a silent background op.
+  const qs = buildQS();
+  try {
+    const bundle = await loadBundle(qs, { force: true });
+    lastBundleAt = Date.now();
+    // Only re-render if the user is still on the same filter signature — they
+    // may have changed the date pill or a filter while the fetch was in flight.
+    if (buildQS() === qs) renderFromBundle(bundle);
+  } catch (e) {
+    console.warn('silent refresh failed (cache stays warm)', e);
+  }
+}
+
+function resetRefreshTimer() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(silentRefresh, REFRESH_INTERVAL_MS);
+}
+
+document.addEventListener('visibilitychange', () => {
+  // When the browser tab becomes visible after being hidden, top up the cache
+  // if it's stale enough to be worth a round-trip. Avoids spamming the server
+  // when you flip tabs rapidly during quick context switches.
+  if (document.visibilityState !== 'visible') return;
+  if (Date.now() - lastBundleAt < VISIBILITY_REFRESH_MIN_AGE_MS) return;
+  silentRefresh();
+});
+const TIMELINE_DAYS = 90;
+
+function fmtTs(iso, withDate) {
+  if (!iso) return '\u2014';
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  const now = new Date();
+  const diffSec = Math.floor((now - d) / 1000);
+  let ago;
+  if (diffSec < 60) ago = diffSec + 's ago';
+  else if (diffSec < 3600) ago = Math.floor(diffSec / 60) + 'm ago';
+  else if (diffSec < 86400) ago = Math.floor(diffSec / 3600) + 'h ago';
+  else ago = Math.floor(diffSec / 86400) + 'd ago';
+  const time = d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+  if (withDate) {
+    const date = d.toLocaleDateString([], {month: 'short', day: 'numeric'});
+    return date + ' ' + time + ' (' + ago + ')';
+  }
+  return time + ' (' + ago + ')';
+}
+
+// Card-specific timestamp renderer. Returns ready-to-inject HTML with the
+// date+time on top (bold, sans-serif tabular numerals) and the relative
+// "Xh ago" beneath in a tiny tertiary label. Kept separate from fmtTs so
+// non-card callers (tables, profile modal header) still get the simple
+// inline string from fmtTs.
+function fmtSessionStamp(iso) {
+  if (!iso) return '<span class="when-main">\u2014</span>';
+  const d = new Date(iso);
+  if (isNaN(d)) return '<span class="when-main">' + escapeHtml(iso) + '</span>';
+  const now = new Date();
+  const diffSec = Math.floor((now - d) / 1000);
+  let ago;
+  if (diffSec < 60) ago = diffSec + 's ago';
+  else if (diffSec < 3600) ago = Math.floor(diffSec / 60) + 'm ago';
+  else if (diffSec < 86400) ago = Math.floor(diffSec / 3600) + 'h ago';
+  else ago = Math.floor(diffSec / 86400) + 'd ago';
+  const date = d.toLocaleDateString([], {month: 'short', day: 'numeric'});
+  const time = d.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
+  return '<span class="when-main">' + escapeHtml(date)
+       + '<span class="when-sep">\u00B7</span>' + escapeHtml(time) + '</span>'
+       + '<span class="when-ago">' + escapeHtml(ago) + '</span>';
+}
+
+function fmtClock(iso) {
+  if (!iso) return '\u2014';
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+}
+
+function shortUid(u) {
+  if (!u) return '\u2014';
+  return u.slice(0, 10) + '\u2026';
+}
+
+// Defensive HTML escape — used wherever we render user-derived strings
+// (narratives in 5a, video titles in 5b, chat questions in 5d) into the DOM.
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Highlights known patterns in the prose narrative produced by
+// pipeline/narrative.py. Order matters: longer / more specific patterns run
+// first, and each match is replaced with a marker token so later regexes
+// don't double-wrap. Tokens are then expanded into <span> tags AFTER an
+// HTML-escape pass — that way the input is escaped exactly once and the
+// resulting span tags are not themselves escaped.
+function colorizeNarrative(text) {
+  if (!text) return '';
+  // Two-pass approach so we can escape user content exactly once: first
+  // replace recognized patterns with sentinel tokens (which contain only
+  // safe ASCII chars escapeHtml leaves alone), then HTML-escape the whole
+  // string, then expand the tokens into span tags with their raw payload
+  // re-escaped. This avoids any "double-escaped &amp;" bugs and keeps the
+  // injected spans intact.
+  const slots = [];
+  const stash = (cls, raw) => {
+    const i = slots.length;
+    slots.push({ cls, raw });
+    return 'RSHHL' + i + 'END';
+  };
+
+  let out = String(text);
+
+  // Arrival sentence: "Arrived 2:17am from Florida, US on mobile / iOS."
+  // Each sub-clause (from <geo>, on <dev>) is independently optional via the
+  // (?: ... )? groups so we cover every shape the narrative builder emits
+  // without needing fallback regexes (those used to re-match the result of
+  // this regex and produce "RSHHL0END" leaks). The negative lookahead
+  // "(?!RSHHL)" on each capture makes triple-sure we never stash a sentinel.
+  out = out.replace(
+    /\bArrived ([^.]*?)(?: from ((?!RSHHL)[^.]+?))?(?: on ((?!RSHHL)[^.]+?))?\./g,
+    (_m, prefix, geo, dev) => {
+      const fromPart = geo ? ' from ' + stash('nv-geo', geo) : '';
+      const onPart   = dev ? ' on '   + stash('nv-device', dev) : '';
+      return 'Arrived ' + prefix + fromPart + onPart + '.';
+    }
+  );
+  // Tab labels (Summary / Subtitles / Transcript / Chat) used in the dwell
+  // sentence and elsewhere.
+  out = out.replace(/\b(Summary|Subtitles|Transcript|Chat)\b/g,
+    (m) => stash('nv-tab', m));
+  // Durations: "5m 33s", "2h 14m", "53s", "1m"
+  out = out.replace(/\b\d+h \d+m\b|\b\d+m \d+s\b|\b\d+[hms]\b/g,
+    (m) => stash('nv-time', m));
+  // Clock times: "2:17am", "12:05pm"
+  out = out.replace(/\b\d{1,2}:\d{2}(?:am|pm)\b/g,
+    (m) => stash('nv-time', m));
+  // Standalone integers (visit numbers, counts) — also greedily picks up an
+  // optional leading "#" so "#6" is wrapped as one span instead of leaving
+  // the hash as default-colored text floating next to a colored "6". Safe to
+  // run last because sentinel tokens "RSHHL0END" have no \b boundary
+  // between L and 0 (both are word chars), so this regex won't match digits
+  // inside them.
+  out = out.replace(/#?\b\d+\b/g, (m) => stash('nv-num', m));
+
+  let escaped = escapeHtml(out);
+  return escaped.replace(/RSHHL(\d+)END/g, (_m, idx) => {
+    const slot = slots[+idx];
+    return '<span class="' + slot.cls + '">' + escapeHtml(slot.raw) + '</span>';
+  });
+}
+
+function detailFor(r) {
+  const bits = [];
+  if (r.tab) bits.push('tab=' + r.tab);
+  if (r.lang) bits.push('lang=' + r.lang);
+  if (r.theme) bits.push('theme=' + r.theme);
+  if (r.mode) bits.push('mode=' + r.mode);
+  if (r.chapter_index != null) bits.push('chapter#' + r.chapter_index + (r.chapter_title_length ? ' (len=' + r.chapter_title_length + ')' : ''));
+  if (r.query_length != null) bits.push('query (len=' + r.query_length + (r.word_count ? ', ' + r.word_count + 'w' : '') + (r.has_question_mark === 'yes' ? ', ?' : '') + ')');
+  if (r.format) bits.push('format=' + r.format);
+  if (r.message_length != null) bits.push('chat_len=' + r.message_length);
+  if (r.video_id) bits.push('<a class="vid" href="https://youtube.com/watch?v=' + r.video_id + '" target="_blank">' + r.video_id + '</a>');
+  return bits.length ? bits.join(' \u00b7 ') : '<span class="muted">\u2014</span>';
+}
+
+function buildQS() {
+  const exCities = [...excludedCities].join(',');
+  const exCountries = [...excludedCountries].join(',');
+  const hideOwner = document.getElementById('hideOwner').checked;
+  const requireVideos = document.getElementById('requireVideos').checked;
+  const requireExtraLang = document.getElementById('requireExtraLang').checked;
+  const requireChat = document.getElementById('requireChat').checked;
+  // Phase 4f (2026-04-22): device + landed-via filters use *include* semantics
+  // server-side ("show only these"). Convert the local *exclude* set to its
+  // complement before sending. When nothing is excluded, send an empty string
+  // — the backend treats that as "no filter" and skips the WHERE entirely.
+  const incDevices = excludedDevices.size === 0
+    ? ''
+    : allDevices.filter(d => !excludedDevices.has(d)).join(',');
+  const incLanded = excludedLanded.size === 0
+    ? ''
+    : allLandedVia.filter(v => !excludedLanded.has(v)).join(',');
+  // hide_unknown_cities is deliberately omitted (defaults to false on the
+  // backend). Removed from UI in 2026-04 cleanup — its original purpose
+  // (catching VPN-disguised owner sessions) is now handled deterministically
+  // by the Supabase-user-id-based owner filter.
+  return `days=${currentDays}`
+    + `&exclude_cities=${encodeURIComponent(exCities)}`
+    + `&exclude_countries=${encodeURIComponent(exCountries)}`
+    + `&hide_owner=${hideOwner}`
+    + `&devices=${encodeURIComponent(incDevices)}`
+    + `&landed_via=${encodeURIComponent(incLanded)}`
+    + `&require_videos=${requireVideos}`
+    + `&require_extra_lang=${requireExtraLang}`
+    + `&require_chat=${requireChat}`;
+}
+
+async function loadFeed() {
+  const tbody = document.getElementById('feedBody');
+  tbody.innerHTML = '<tr><td colspan="7" class="loading">Loading...</td></tr>';
+  try {
+    const res = await fetch('/api/analytics/bq/feed?limit=100&' + buildQS());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const rows = data.rows || [];
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="loading">No events</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td class="ts">${fmtTs(r.ts)}</td>
+        <td class="ev">${r.event_name || '\u2014'}</td>
+        <td class="uid" title="${r.user_pseudo_id || ''}">${shortUid(r.user_pseudo_id)}</td>
+        <td>${r.device || '\u2014'}</td>
+        <td>${r.city || '\u2014'}</td>
+        <td>${r.country || '\u2014'}</td>
+        <td>${detailFor(r)}</td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="7" class="err">Failed: ' + e.message + '</td></tr>';
+  }
+}
+
+async function loadUsers(preloaded) {
+  // Phase 8a: pass `preloaded` (the /users response body) to render from cache.
+  const tbody = document.getElementById('usersBody');
+  if (!preloaded) tbody.innerHTML = '<tr><td colspan="10" class="loading">Loading...</td></tr>';
+  try {
+    let data;
+    if (preloaded) {
+      data = preloaded;
+    } else {
+      const res = await fetch('/api/analytics/bq/users?' + buildQS());
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      data = await res.json();
+    }
+    const rows = data.rows || [];
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="10" class="loading">No users</td></tr>';
+      return;
+    }
+    // Always show suspected rows. With the user-id-based owner filter the
+    // "suspected" set is now mostly empty going forward (any new pseudo_id
+    // matching the owner UUID is auto-confirmed by the cron); the few legacy
+    // weak-signal rows that remain are useful to surface, not hide.
+    const visible = rows;
+    if (!visible.length) {
+      tbody.innerHTML = '<tr><td colspan="10" class="loading">No users</td></tr>';
+      return;
+    }
+    tbody.innerHTML = visible.map(r => {
+      const sus = r.is_suspected_owner;
+      const chip = sus ? '<span class="suspect-chip">\u26a0 suspected</span>' : '';
+      const actions = sus
+        ? '<span class="suspect-actions">'
+            + '<button class="suspect-btn confirm" data-action="confirm" data-uid="' + r.user_pseudo_id + '">\u2705 Me</button>'
+            + '<button class="suspect-btn revoke"  data-action="revoke"  data-uid="' + r.user_pseudo_id + '">\u274c Not me</button>'
+          + '</span>'
+        : '';
+      return `
+      <tr class="user-row${sus ? ' suspect-row' : ''}" data-uid="${r.user_pseudo_id}">
+        <td class="uid profile-link" title="${r.user_pseudo_id} (click for full profile)" onclick="event.stopPropagation(); openProfile('${r.user_pseudo_id}')">${chip}${shortUid(r.user_pseudo_id)}${actions}</td>
+        <td>${r.device || '\u2014'}</td>
+        <td>${r.os || '\u2014'}</td>
+        <td>${r.browser || '\u2014'}</td>
+        <td>${r.city || '\u2014'}</td>
+        <td>${r.country || '\u2014'}</td>
+        <td class="num">${r.event_count}</td>
+        <td class="num">${r.session_count}</td>
+        <td>${fmtTs(r.first_seen, true)}</td>
+        <td>${fmtTs(r.last_seen, true)}</td>
+      </tr>`;
+    }).join('');
+    wireUserRows();
+    wireSuspectButtons();
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="10" class="err">Failed: ' + e.message + '</td></tr>';
+  }
+}
+
+async function reloadActiveTab() {
+  // Phase 8a: route every reload through the bundle cache. Cache hit (same
+  // filter signature still in memory) → render synchronously, no fetch.
+  // Cache miss (date-pill change, filter toggle, etc.) → one bundled fetch
+  // hydrates everything at once. Live Feed isn't in the bundle, so when it's
+  // the active tab we still fetch /feed directly.
+  const active = document.querySelector('.panel-tab.active').dataset.tab;
+  if (active === 'feed') {
+    // Feed never goes through the bundle, but overview + etl still come from it
+    // so the hero/badge stay in sync with the current filter signature.
+    try {
+      const bundle = await loadBundle(buildQS());
+      if (bundle.overview && !bundle.overview.error) loadOverview(bundle.overview);
+      if (bundle.etl     && !bundle.etl.error)     loadEtlBadge(bundle.etl);
+    } catch (e) {
+      console.error('bundle (feed-active) failed', e);
+    }
+    loadFeed();
+    return;
+  }
+  try {
+    const bundle = await loadBundle(buildQS());
+    renderFromBundle(bundle);
+  } catch (e) {
+    console.error('bundle failed, falling back to per-endpoint loaders', e);
+    loadOverview();
+    loadEtlBadge();
+    if (active === 'sessions') loadSessions(true);
+    else                       loadUsers();
+  }
+}
+
+// ===== Phase 4c — ETL health badge + source-of-truth indicator =====
+function fmtAgo(iso) {
+  if (!iso) return 'unknown';
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diff < 60)    return diff + 's ago';
+  if (diff < 3600)  return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  return Math.floor(diff / 86400) + 'd ago';
+}
+
+async function loadEtlBadge(preloaded) {
+  // Single most-recent run is enough for the badge. Rendered colors:
+  //   green  = success and < 36h old (cron healthy)
+  //   yellow = success but >= 36h old (cron slipped a beat — investigate)
+  //   red    = last run was an error (or the table has no successful row at all)
+  // Phase 8a: when called with `preloaded` (the {rows: [...]} blob from the
+  // bundle endpoint), skip the fetch and render from memory.
+  const badge = document.getElementById('etlBadge');
+  const value = document.getElementById('etlBadgeValue');
+  badge.classList.remove('ok', 'warn', 'err');
+  if (!preloaded) value.textContent = 'checking\u2026';
+  try {
+    let d;
+    if (preloaded) {
+      d = preloaded;
+    } else {
+      const res = await fetch('/api/analytics/bq/etl/runs?limit=1');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      d = await res.json();
+    }
+    const run = (d.rows || [])[0];
+    if (!run) {
+      badge.classList.add('warn');
+      value.textContent = 'no runs yet';
+      badge.title = 'No ETL runs found in rs_etl_runs. Trigger one with POST /api/analytics/bq/etl/sessions/run';
+      return;
+    }
+    const ts = run.finished_at || run.started_at;
+    const ago = fmtAgo(ts);
+    if (run.status === 'error') {
+      badge.classList.add('err');
+      value.textContent = 'failed ' + ago;
+      badge.title = 'Last ETL failed: ' + (run.error_msg || '(no error message)');
+    } else if (run.status === 'success') {
+      const diffH = (Date.now() - new Date(ts).getTime()) / 3600000;
+      badge.classList.add(diffH > 36 ? 'warn' : 'ok');
+      value.textContent = ago + ' \u2713';
+      badge.title = 'Last successful ETL: ' + ts + ' (' + (run.rows_written || 0) + ' rows)';
+    } else {
+      badge.classList.add('warn');
+      value.textContent = run.status + ' ' + ago;
+      badge.title = 'Last run status: ' + run.status;
+    }
+  } catch (e) {
+    badge.classList.add('err');
+    value.textContent = 'unreachable';
+    badge.title = e.message;
+  }
+}
+
+// ===== Sessions tab (Phase 3b) =====
+let sessionsOffset = 0;
+const SESSIONS_PAGE = 25;
+const expandedSessions = new Set();   // remembers which session keys are open across reloads
+
+function sessionKey(s) { return s.user_pseudo_id + '__' + s.session_id; }
+
+function fmtDuration(sec) {
+  if (!sec || sec < 1) return '<1s';
+  if (sec < 60)        return sec + 's';
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  if (m < 60) return s ? (m + 'm ' + s + 's') : (m + 'm');
+  const h = Math.floor(m / 60);
+  return h + 'h ' + (m % 60) + 'm';
+}
+
+function renderSessionCard(s) {
+  const key = sessionKey(s);
+  const sus = s.is_suspected_owner;
+  const geo = [s.city, s.region, s.country].filter(x => x && x !== '(not set)').join(', ') || 'unknown';
+  const dev = [s.device, s.os, s.browser].filter(Boolean).join(' / ') || 'unknown';
+  const videos = (s.video_ids || []).filter(Boolean);
+  const titles = s.video_titles || {};
+  // Each video chip pairs the YouTube link (icon + ID, monospace) with its
+  // resolved title (when known) so a glance at the bottom row tells you what
+  // the visitor actually pasted, no need to read the prose.
+  const videoTags = videos.length
+    ? videos.slice(0, 3).map(v => {
+        const t = titles[v] || {};
+        const titleText = (t.title || '').trim();
+        const channelText = (t.channel || '').trim();
+        const titleHtml = titleText
+          ? '<span class="sess-vid-title">' + escapeHtml(titleText)
+              + (channelText ? ' <span class="sess-vid-channel">\u2014 ' + escapeHtml(channelText) + '</span>' : '')
+              + '</span>'
+          : '';
+        return '<a class="sess-tag video" href="https://www.youtube.com/watch?v=' + encodeURIComponent(v)
+          + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="' + escapeHtml(titleText || v) + '">'
+          + '\u25B6 <span class="vid-id">' + escapeHtml(v) + '</span>' + titleHtml + '</a>';
+      }).join('') + (videos.length > 3 ? '<span class="sess-tag empty">+' + (videos.length - 3) + ' more</span>' : '')
+    : '';
+  const videoCountChip = videos.length
+    ? '<span class="sess-tag count">' + videos.length + ' video' + (videos.length === 1 ? '' : 's') + ' loaded</span>'
+    : '<span class="sess-tag empty">no videos</span>';
+  // Chat chip → toggles the inline .sess-chat panel below the card. role=button
+  // + tabindex make it keyboard-accessible (Enter/Space toggles via the wireup
+  // handler).
+  const chatChip = (s.chat_count && s.chat_count > 0)
+    ? '<span class="sess-tag chat" data-action="toggle-chat" role="button" tabindex="0" title="Click to read the chat questions">'
+        + '\u{1F4AC} ' + s.chat_count + ' chat' + (s.chat_count === 1 ? '' : 's')
+      + '</span>'
+    : '';
+  const chatMessages = s.chat_messages || [];
+  const chatPanelHtml = chatMessages.length
+    ? '<div class="sess-chat" data-role="chat-panel">'
+      + chatMessages.map(m =>
+          '<div class="sess-chat-msg">'
+            + '<span class="sess-chat-when">' + escapeHtml(fmtTs(m.sent_at, true)) + '</span>'
+            + '<div class="sess-chat-text">' + escapeHtml(m.message || '') + '</div>'
+          + '</div>'
+        ).join('')
+      + '</div>'
+    : '';
+  // Phase 4f (2026-04-22):
+  //   * vidLangChip   = the video's source language (teal)
+  //   * langChip      = languages the user TRANSLATED INTO via the lang panel,
+  //                     EXCLUDING the video's own language so we don't show the
+  //                     same code twice on the same card.
+  //   * landedChip    = how they got to the page (direct / search / social / …)
+  const videoLang = (s.video_lang || '').trim();
+  const vidLangChip = videoLang
+    ? '<span class="sess-tag vidlang" title="Source language of the video">\u{1F3AC} ' + escapeHtml(videoLang) + '</span>'
+    : '';
+  const langs = (s.languages_used || []).filter(Boolean).filter(l => l !== videoLang);
+  const langChip = langs.length
+    ? '<span class="sess-tag lang" title="Languages the user translated the video into">\u{1F310} ' + langs.map(escapeHtml).join(', ') + '</span>'
+    : '';
+  const LANDED_DISPLAY = {
+    direct:   { icon: '\u2192', label: 'Direct' },
+    search:   { icon: '\u{1F50D}', label: 'Search' },
+    social:   { icon: '\u2197', label: 'Social' },
+    referral: { icon: '\u{1F517}', label: 'Referral' },
+    other:    { icon: '\u2026', label: 'Other' },
+  };
+  const landedKey = (s.landed_via || '').toLowerCase();
+  const landedMeta = LANDED_DISPLAY[landedKey];
+  // Title shows the raw GA4 source/medium for power-user inspection on hover.
+  const landedTitle = (s.traffic_source || s.traffic_medium)
+    ? 'source=' + (s.traffic_source || '?') + ' / medium=' + (s.traffic_medium || '?')
+    : 'How the visitor reached the page';
+  const landedChip = landedMeta
+    ? '<span class="sess-tag landed" title="' + escapeHtml(landedTitle) + '">'
+        + landedMeta.icon + ' ' + landedMeta.label
+      + '</span>'
+    : '';
+
+  const chip = sus ? '<span class="suspect-chip">\u26a0 suspected</span>' : '';
+  // Phase 5a: prose narrative built by pipeline/narrative.py at ETL time.
+  // colorizeNarrative() wraps known patterns (geo, device, durations, numbers)
+  // in span tags so the prose has visual rhythm instead of a wall of grey
+  // italic text. The function escapes HTML internally so the final string is
+  // safe to inject as innerHTML.
+  const narrativeHtml = s.narrative
+    ? '<div class="sess-narrative">' + colorizeNarrative(s.narrative) + '</div>'
+    : '';
+  const actions = sus
+    ? '<span class="suspect-actions" onclick="event.stopPropagation()">'
+        + '<button class="suspect-btn confirm" data-action="confirm" data-uid="' + s.user_pseudo_id + '">\u2705 Me</button>'
+        + '<button class="suspect-btn revoke"  data-action="revoke"  data-uid="' + s.user_pseudo_id + '">\u274c Not me</button>'
+      + '</span>'
+    : '';
+
+  return `
+    <div class="sess-card${sus ? ' suspect-card' : ''}" data-key="${key}" data-uid="${s.user_pseudo_id}" data-sid="${s.session_id}">
+      <div class="sess-row1">
+        ${chip}
+        <span class="sess-when" title="${s.started_at || ''}">${fmtSessionStamp(s.started_at)}</span>
+        <span class="sess-duration">${fmtDuration(s.duration_sec)}</span>
+        ${actions}
+        <span class="sess-uid" title="${s.user_pseudo_id} (click for full profile)" onclick="event.stopPropagation(); openProfile('${s.user_pseudo_id}')">${shortUid(s.user_pseudo_id)}</span>
+      </div>
+      ${narrativeHtml}
+      <div class="sess-row2">
+        <span class="sess-tag geo">\u{1F4CD} ${escapeHtml(geo)}</span>
+        <span class="sess-tag device">\u{1F5A5} ${escapeHtml(dev)}</span>
+        ${landedChip}
+        ${videoCountChip}
+        ${chatChip}
+        ${vidLangChip}
+        ${langChip}
+      </div>
+      ${videos.length ? '<div class="sess-row3">' + videoTags + '</div>' : ''}
+      ${chatPanelHtml}
+    </div>
+  `;
+}
+
+async function loadSessions(reset, preloaded) {
+  // Phase 8a: pass `preloaded` (the /sessions response body) to render from
+  // the bundle. `preloaded` always implies `reset=true` since the bundle only
+  // contains the first page; subsequent "Load more" clicks still fetch live.
+  const list = document.getElementById('sessionsList');
+  const moreBtn = document.getElementById('sessionsMore');
+  if (reset) {
+    sessionsOffset = 0;
+    if (!preloaded) list.innerHTML = '<div class="loading">Loading sessions\u2026</div>';
+    moreBtn.style.display = 'none';
+  }
+  try {
+    let data;
+    if (preloaded) {
+      data = preloaded;
+    } else {
+      const qs = buildQS() + '&limit=' + SESSIONS_PAGE + '&offset=' + sessionsOffset;
+      const res = await fetch('/api/analytics/bq/sessions?' + qs);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      data = await res.json();
+    }
+    const visible = data.rows;
+
+    if (reset) list.innerHTML = '';
+    if (!visible.length && reset) {
+      list.innerHTML = '<div class="loading">No sessions in this range.</div>';
+    } else {
+      list.insertAdjacentHTML('beforeend', visible.map(renderSessionCard).join(''));
+    }
+
+    sessionsOffset = data.next_offset != null ? data.next_offset : (sessionsOffset + data.count);
+    moreBtn.style.display = data.has_more ? 'block' : 'none';
+    moreBtn.disabled = false;
+    moreBtn.textContent = 'Load more';
+    updateSourceIndicator(data.source);
+    wireSessionCards();
+    wireSuspectButtons();
+  } catch (e) {
+    list.innerHTML = '<div class="err">Failed: ' + e.message + '</div>';
+    console.error('sessions failed', e);
+  }
+}
+
+function wireSessionCards() {
+  // Phase 8b refresh: card body is no longer one big click target. The only
+  // interactive elements are individual chips/links/buttons inside the card,
+  // each of which wires its own behavior here. The chat chip toggles the
+  // inline message panel (real text of the questions the visitor asked).
+  document.querySelectorAll('.sess-card').forEach(card => {
+    if (card.dataset.wired) return;
+    card.dataset.wired = '1';
+
+    card.querySelectorAll('[data-action="toggle-chat"]').forEach(chip => {
+      const toggle = (e) => {
+        e.stopPropagation();
+        const panel = card.querySelector('[data-role="chat-panel"]');
+        if (!panel) return;
+        const open = panel.classList.toggle('open');
+        chip.classList.toggle('open', open);
+      };
+      chip.addEventListener('click', toggle);
+      chip.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') toggle(e);
+      });
+    });
+  });
+}
+
+async function loadSessionDetail(card) {
+  const detail = card.querySelector('.sess-detail');
+  detail.style.display = 'block';
+  if (detail.dataset.loaded) return;     // cache; full re-render is unnecessary
+  detail.innerHTML = '<div class="loading">Loading events\u2026</div>';
+  const uid = card.dataset.uid, sid = card.dataset.sid;
+  try {
+    const res = await fetch('/api/analytics/bq/sessions/' + encodeURIComponent(uid) + '/' + encodeURIComponent(sid) + '?days=' + TIMELINE_DAYS);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    if (!d.found || !d.events.length) {
+      detail.innerHTML = '<div class="loading">No events found in the last ' + TIMELINE_DAYS + ' days.</div>';
+      return;
+    }
+    detail.innerHTML =
+      '<table><thead><tr><th>Time</th><th>Event</th><th>Page</th><th>Tab</th><th>Video</th><th>Detail</th></tr></thead><tbody>'
+      + d.events.map(e => `
+          <tr>
+            <td class="ts">${fmtTs(e.ts, false)}</td>
+            <td class="ev">${e.event_name}</td>
+            <td class="muted">${e.page ? new URL(e.page).pathname : '\u2014'}</td>
+            <td>${e.tab || '\u2014'}</td>
+            <td>${e.video_id ? '<a class="vid" href="https://www.youtube.com/watch?v=' + encodeURIComponent(e.video_id) + '" target="_blank" rel="noopener">' + e.video_id + '</a>' : '\u2014'}</td>
+            <td class="muted">${eventDetail(e)}</td>
+          </tr>`).join('')
+      + '</tbody></table>';
+    detail.dataset.loaded = '1';
+  } catch (e) {
+    detail.innerHTML = '<div class="err">Failed: ' + e.message + '</div>';
+  }
+}
+
+function eventDetail(e) {
+  // Compact, schema-aware detail string for the per-event row in the session timeline.
+  const bits = [];
+  if (e.lang)            bits.push('lang=' + e.lang);
+  if (e.theme)           bits.push('theme=' + e.theme);
+  if (e.mode)            bits.push('mode=' + e.mode);
+  if (e.format)          bits.push('format=' + e.format);
+  if (e.enabled)         bits.push('enabled=' + e.enabled);
+  if (e.chapter_index != null) bits.push('chapter#' + e.chapter_index);
+  if (e.query_length)    bits.push('q.len=' + e.query_length + (e.word_count ? ' (' + e.word_count + 'w)' : ''));
+  if (e.message_length)  bits.push('msg.len=' + e.message_length);
+  return bits.length ? bits.join(' \u2022 ') : '\u2014';
+}
+
+const RANGE_LABELS = { 1: 'today', 3: 'last 3 days', 7: 'last 7 days', 30: 'last 30 days', 90: 'last 90 days' };
+function fmtNum(n) {
+  return new Intl.NumberFormat('en-US').format(n || 0);
+}
+async function loadOverview(preloaded) {
+  // Phase 8a: pass `preloaded` (the /overview response body) to render from
+  // the bundle without a fetch. No-op-cheap on a hit; legacy fetch path on miss.
+  const cards = ['heroUsers', 'heroSessions', 'heroAvgDuration', 'heroCountries']
+    .map(id => document.getElementById(id));
+  if (!preloaded) cards.forEach(c => c.classList.add('loading'));
+  document.getElementById('heroUsersSub').textContent = RANGE_LABELS[currentDays] || ('last ' + currentDays + ' days');
+  try {
+    let d;
+    if (preloaded) {
+      d = preloaded;
+    } else {
+      const res = await fetch('/api/analytics/bq/overview?' + buildQS());
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      d = await res.json();
+    }
+    cards.forEach(c => c.classList.remove('loading'));
+    document.querySelector('#heroUsers .value').textContent     = fmtNum(d.unique_users);
+    document.querySelector('#heroSessions .value').textContent     = fmtNum(d.sessions);
+    document.querySelector('#heroAvgDuration .value').textContent  = fmtDuration(d.avg_session_duration_sec || 0);
+    document.querySelector('#heroCountries .value').textContent    = fmtNum(d.countries);
+  } catch (e) {
+    cards.forEach(c => { c.classList.remove('loading'); c.querySelector('.value').textContent = '!'; });
+    console.error('overview failed', e);
+  }
+}
+
+function wireUserRows() {
+  document.querySelectorAll('.user-row').forEach(row => {
+    row.addEventListener('click', (e) => {
+      // Don't expand timeline when clicking the suspect action buttons.
+      if (e.target.closest('.suspect-btn')) return;
+      toggleTimeline(row);
+    });
+  });
+}
+
+function wireSuspectButtons() {
+  document.querySelectorAll('.suspect-btn').forEach(btn => {
+    if (btn.dataset.wired) return;       // append-mode (Load more) re-runs this; don't double-wire
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const uid = btn.dataset.uid;
+      const action = btn.dataset.action; // 'confirm' or 'revoke'
+      const verb = action === 'confirm' ? 'Confirm this is you?' : 'Mark as NOT you?';
+      if (!confirm(verb + '\n\n' + uid)) return;
+      btn.disabled = true;
+      btn.textContent = '\u2026';
+      try {
+        const res = await _authedFetch('/api/analytics/bq/owners/' + encodeURIComponent(uid) + '/' + action, { method: 'POST' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        // Confirm/revoke shifts what the BQ filter excludes, so refresh both the
+        // hero counts and whatever tab the user is currently looking at.
+        reloadActiveTab();
+      } catch (err) {
+        alert(action + ' failed: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = action === 'confirm' ? '\u2705 Me' : '\u274c Not me';
+      }
+    });
+  });
+}
+
+async function toggleTimeline(row) {
+  const uid = row.dataset.uid;
+  const next = row.nextElementSibling;
+  if (next && next.classList.contains('timeline-row') && next.dataset.uid === uid) {
+    next.remove();
+    row.classList.remove('expanded');
+    return;
+  }
+  document.querySelectorAll('.timeline-row').forEach(t => t.remove());
+  document.querySelectorAll('.user-row').forEach(r => r.classList.remove('expanded'));
+  row.classList.add('expanded');
+
+  const tlRow = document.createElement('tr');
+  tlRow.className = 'timeline-row';
+  tlRow.dataset.uid = uid;
+  tlRow.innerHTML = '<td colspan="10"><div class="timeline-wrap"><div class="loading">Loading timeline...</div></div></td>';
+  row.after(tlRow);
+
+  try {
+    const res = await fetch('/api/analytics/bq/timeline/' + encodeURIComponent(uid) + '?days=' + TIMELINE_DAYS);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const rows = data.rows || [];
+    if (!rows.length) {
+      tlRow.querySelector('.timeline-wrap').innerHTML = '<div class="loading">No events</div>';
+      return;
+    }
+    let lastSession = null;
+    const html = rows.map(r => {
+      let sessionDivider = '';
+      if (r.session_id !== lastSession) {
+        sessionDivider = `<div class="session-divider">Session ${r.session_id || '(none)'}</div>`;
+        lastSession = r.session_id;
+      }
+      return sessionDivider + `
+        <div class="timeline-event">
+          <span class="te-ts">${fmtClock(r.ts)}</span>
+          <span class="te-name">${r.event_name}</span>
+          <span class="te-detail">${detailFor(r)}</span>
+        </div>`;
+    }).join('');
+    tlRow.querySelector('.timeline-wrap').innerHTML = `
+      <div class="timeline-header">
+        <span><b>${rows.length}</b> events</span>
+        <span><b>${new Set(rows.map(r => r.session_id)).size}</b> sessions</span>
+        <span>First: ${fmtTs(rows[0].ts, true)}</span>
+        <span>Last: ${fmtTs(rows[rows.length-1].ts, true)}</span>
+      </div>
+      ${html}
+    `;
+  } catch(e) {
+    tlRow.querySelector('.timeline-wrap').innerHTML = '<div class="err">Failed: ' + e.message + '</div>';
+  }
+}
+
+// Filter dropdown builder
+function buildFilterDropdown(containerId, label, items, excludedSet, pinTop, displayMap) {
+  const container = document.getElementById(containerId);
+  const display = (n) => (displayMap && displayMap[n]) || n;
+
+  const btn = document.createElement('button');
+  btn.className = 'filter-btn';
+  function refreshBtnLabel() {
+    const cnt = [...items].filter(n => excludedSet.has(n)).length;
+    btn.innerHTML = label + (cnt ? ` <span class="count">${cnt}</span>` : '') + ' &#9662;';
+  }
+  refreshBtnLabel();
+
+  const menu = document.createElement('div');
+  menu.className = 'filter-menu';
+
+  const pinSet = new Set(pinTop || []);
+  const sorted = [...items].sort((a, b) => {
+    const aPin = pinSet.has(a) ? 0 : 1;
+    const bPin = pinSet.has(b) ? 0 : 1;
+    if (aPin !== bPin) return aPin - bPin;
+    return a.localeCompare(b);
+  });
+  sorted.forEach(name => {
+    const item = document.createElement('label');
+    item.className = 'filter-item' + (excludedSet.has(name) ? ' excluded' : '');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = !excludedSet.has(name);
+    cb.addEventListener('change', () => {
+      if (cb.checked) {
+        excludedSet.delete(name);
+        item.classList.remove('excluded');
+      } else {
+        excludedSet.add(name);
+        item.classList.add('excluded');
+      }
+      refreshBtnLabel();
+      reloadActiveTab();
+    });
+    item.appendChild(cb);
+    item.appendChild(document.createTextNode(display(name)));
+    menu.appendChild(item);
+  });
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.filter-menu').forEach(m => { if (m !== menu) m.classList.remove('open'); });
+    menu.classList.toggle('open');
+  });
+
+  container.appendChild(btn);
+  container.appendChild(menu);
+}
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.filter-menu').forEach(m => m.classList.remove('open'));
+});
+
+// City + country dropdowns (cities exclude FL ones — those have their own pills)
+const allCityNames = (FACETS.cities || []).map(c => c.city).filter(c => !floridaCities.includes(c));
+const allCountryNames = FACETS.countries || [];
+buildFilterDropdown('cityFilter', 'Cities', allCityNames, excludedCities, []);
+buildFilterDropdown('countryFilter', 'Countries', allCountryNames, excludedCountries, ['United States']);
+// Phase 4f (2026-04-22): device + how-they-landed pills. Click-to-toggle
+// multi-select — same shape as the date-range pills, but each pill is
+// independent. Active = included; faded = excluded. Default: all active.
+const DEVICE_LABELS = {
+  mobile: 'Mobile',
+  desktop: 'Desktop',
+  tablet: 'Tablet',
+  other:  'Other',
+};
+const LANDED_LABELS = {
+  direct:   '\u2192 Direct',
+  search:   '\u{1F50D} Search',
+  social:   '\u2197 Social',
+  referral: '\u{1F517} Referral',
+  other:    '\u2026 Other',
+};
+function buildTogglePills(containerId, items, excludedSet, labelMap) {
+  const container = document.getElementById(containerId);
+  items.forEach(name => {
+    const pill = document.createElement('span');
+    pill.className = 'tp-pill' + (excludedSet.has(name) ? '' : ' active');
+    pill.dataset.value = name;
+    pill.textContent = (labelMap && labelMap[name]) || name;
+    pill.addEventListener('click', () => {
+      if (excludedSet.has(name)) {
+        excludedSet.delete(name);
+        pill.classList.add('active');
+      } else {
+        excludedSet.add(name);
+        pill.classList.remove('active');
+      }
+      reloadActiveTab();
+    });
+    container.appendChild(pill);
+  });
+}
+buildTogglePills('devicePills', allDevices,   excludedDevices, DEVICE_LABELS);
+buildTogglePills('landedPills', allLandedVia, excludedLanded,  LANDED_LABELS);
+
+// Florida pills
+const flContainer = document.getElementById('floridaPills');
+const flAllPill = document.getElementById('flAllPill');
+
+function refreshFlAllPill() {
+  const allExcluded = floridaCities.every(c => excludedCities.has(c));
+  flAllPill.classList.toggle('off', allExcluded);
+  flAllPill.textContent = allExcluded ? 'ALL OFF' : 'ALL ON';
+}
+
+floridaCities.forEach(city => {
+  const pill = document.createElement('span');
+  pill.className = 'fl-pill' + (excludedCities.has(city) ? '' : ' included');
+  pill.dataset.city = city;
+  pill.textContent = city;
+  pill.addEventListener('click', () => {
+    if (excludedCities.has(city)) {
+      excludedCities.delete(city);
+      pill.classList.add('included');
+    } else {
+      excludedCities.add(city);
+      pill.classList.remove('included');
+    }
+    refreshFlAllPill();
+    reloadActiveTab();
+  });
+  flContainer.appendChild(pill);
+});
+
+flAllPill.addEventListener('click', () => {
+  const allExcluded = floridaCities.every(c => excludedCities.has(c));
+  if (allExcluded) {
+    floridaCities.forEach(c => excludedCities.delete(c));
+  } else {
+    floridaCities.forEach(c => excludedCities.add(c));
+  }
+  document.querySelectorAll('.fl-pill').forEach(p => {
+    p.classList.toggle('included', !excludedCities.has(p.dataset.city));
+  });
+  refreshFlAllPill();
+  reloadActiveTab();
+});
+refreshFlAllPill();
+
+document.getElementById('hideOwner').addEventListener('change', reloadActiveTab);
+document.getElementById('requireVideos').addEventListener('change', reloadActiveTab);
+document.getElementById('requireExtraLang').addEventListener('change', reloadActiveTab);
+document.getElementById('requireChat').addEventListener('change', reloadActiveTab);
+
+// Rescan-owners button removed in 2026-04 cleanup. The owner-scan now runs
+// automatically every hour as part of the etl-sessions PM2 cron — see
+// pipeline/etl_sessions.run() and docs/_tech/06_ANALYTICS.md. The HTTP
+// endpoint POST /api/analytics/bq/owners/scan is still available for ad-hoc
+// invocation via curl if you ever need impatience.
+
+document.querySelectorAll('#daysPills .days-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    const d = parseInt(pill.dataset.days, 10);
+    if (!d || d === currentDays) return;
+    currentDays = d;
+    document.querySelectorAll('#daysPills .days-pill').forEach(p => p.classList.toggle('active', p === pill));
+    reloadActiveTab();
+  });
+});
+
+document.querySelectorAll('.panel-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const target = tab.dataset.tab;
+    document.getElementById('sessionsPane').style.display = target === 'sessions' ? '' : 'none';
+    document.getElementById('feedPane').style.display     = target === 'feed'     ? '' : 'none';
+    document.getElementById('usersPane').style.display    = target === 'users'    ? '' : 'none';
+    // Phase 8a: render from cache if the bundle is already in memory for this
+    // filter signature — no network round-trip on tab switches.
+    const cached = bundleCache.get(buildQS());
+    if      (target === 'sessions') {
+      if (cached && cached.sessions && !cached.sessions.error) loadSessions(true, cached.sessions);
+      else                                                     loadSessions(true);
+    } else if (target === 'users') {
+      if (cached && cached.users && !cached.users.error) loadUsers(cached.users);
+      else                                               loadUsers();
+    } else if (target === 'feed') {
+      loadFeed();
+    }
+  });
+});
+
+document.getElementById('sessionsMore').addEventListener('click', () => {
+  const btn = document.getElementById('sessionsMore');
+  btn.disabled = true; btn.textContent = 'Loading\u2026';
+  loadSessions(false);
+});
+
+function updateSourceIndicator(source) {
+  // Plain-language hint so a non-technical viewer immediately understands whether
+  // they're looking at a fast-but-up-to-24h-old snapshot or live (slower, costlier)
+  // numbers. Also doubles as a debug signal — if the auto fallback ever kicks in,
+  // this flips to "Live" without anyone touching a URL.
+  const el = document.getElementById('footerSource');
+  const wrap = document.getElementById('footerSourceWrap');
+  el.classList.remove('supabase', 'bq');
+  if (source === 'supabase') {
+    el.classList.add('supabase');
+    el.textContent = 'Saved snapshot';
+    wrap.title = 'Reading from a saved copy of the data. Refreshes whenever "Last sync" runs.';
+  } else if (source === 'bq') {
+    el.classList.add('bq');
+    el.textContent = 'Live data';
+    wrap.title = 'Reading directly from the analytics warehouse. Always up to date, but slower and costs money per click.';
+  } else {
+    el.textContent = source || '\u2014';
+    wrap.title = 'Where this page is reading session data from right now.';
+  }
+}
+
+// ===== Phase 6 — cross-visit user profile modal =====
+// Single drill-down for "who is this visitor?". Triggered by clicking any UID
+// chip in a session card or users-table row. Hits /users/{uid}, which returns
+// aggregate stats + the user's recent sessions (with narratives baked in by the
+// ETL), then renders them with the existing renderSessionCard so 5a–5e prose
+// shows up identically inside the modal.
+const PROFILE_DAYS = 90;
+let profileLastUid = null;
+
+function renderProfileStats(p) {
+  if (!p || !p.found) return '';
+  const parts = [];
+  parts.push('<span class="profile-stat"><b>' + p.session_count + '</b> visits</span>');
+  parts.push('<span class="profile-stat"><b>' + p.event_count + '</b> events</span>');
+  if (p.video_count) parts.push('<span class="profile-stat"><b>' + p.video_count + '</b> videos</span>');
+  const geo = [p.city, p.region, p.country].filter(Boolean).join(', ');
+  if (geo) parts.push('<span class="profile-stat">\u{1F4CD} ' + escapeHtml(geo) + '</span>');
+  const dev = [p.device, p.os, p.browser].filter(Boolean).join(' / ');
+  if (dev) parts.push('<span class="profile-stat">\u{1F5A5} ' + escapeHtml(dev) + '</span>');
+  if (p.first_seen) parts.push('<span class="profile-stat">First: <b>' + fmtTs(p.first_seen, true) + '</b></span>');
+  if (p.last_seen)  parts.push('<span class="profile-stat">Last: <b>'  + fmtTs(p.last_seen,  true) + '</b></span>');
+  if (p.is_suspected_owner) parts.push('<span class="profile-stat profile-suspect">\u26a0 suspected owner</span>');
+  return parts.join('<span class="profile-stat-divider">|</span>');
+}
+
+async function openProfile(uid) {
+  if (!uid) return;
+  profileLastUid = uid;
+  const backdrop = document.getElementById('profileBackdrop');
+  const stats    = document.getElementById('profileStats');
+  const body     = document.getElementById('profileBody');
+  const uidMono  = document.getElementById('profileUidMono');
+
+  uidMono.textContent = uid;
+  stats.innerHTML = '<span class="profile-stat">Loading\u2026</span>';
+  body.innerHTML  = '<div class="loading">Loading sessions\u2026</div>';
+  backdrop.style.display = 'flex';
+  // Lock background scroll while the modal is open so wheel events don't bleed
+  // through to the dashboard underneath.
+  document.body.style.overflow = 'hidden';
+
+  try {
+    const res = await fetch('/api/analytics/bq/users/' + encodeURIComponent(uid)
+                            + '?days=' + PROFILE_DAYS);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const p = await res.json();
+
+    if (!p.found) {
+      stats.innerHTML = '';
+      body.innerHTML = '<div class="loading">No activity for this visitor in the last '
+                       + PROFILE_DAYS + ' days.</div>';
+      return;
+    }
+    stats.innerHTML = renderProfileStats(p);
+
+    const sessions = p.recent_sessions || [];
+    if (!sessions.length) {
+      body.innerHTML = '<div class="loading">No sessions captured yet.</div>';
+      return;
+    }
+    body.innerHTML = sessions.map(renderSessionCard).join('')
+                   + (p.recent_sessions_has_more
+                       ? '<div class="loading" style="padding:8px 0">'
+                         + 'Showing first ' + sessions.length + ' visits. Older history exists '
+                         + 'but isn\'t loaded in this view yet.</div>'
+                       : '');
+    // Re-wire interactive bits inside the freshly-injected cards. Both helpers
+    // are idempotent (they skip already-wired elements via data-wired) so it's
+    // safe to call them on top of the main page's wiring.
+    wireSuspectButtons();
+    wireSessionCards();
+  } catch (e) {
+    body.innerHTML = '<div class="err">Failed to load profile: ' + escapeHtml(e.message) + '</div>';
+  }
+}
+
+function closeProfile() {
+  document.getElementById('profileBackdrop').style.display = 'none';
+  document.body.style.overflow = '';
+  profileLastUid = null;
+}
+
+document.getElementById('profileCloseBtn').addEventListener('click', closeProfile);
+document.getElementById('profileBackdrop').addEventListener('click', (e) => {
+  // Close only when the backdrop itself is clicked, not the modal contents.
+  if (e.target.id === 'profileBackdrop') closeProfile();
+});
+document.getElementById('profileCopyBtn').addEventListener('click', async () => {
+  if (!profileLastUid) return;
+  const btn = document.getElementById('profileCopyBtn');
+  const original = btn.textContent;
+  try {
+    await navigator.clipboard.writeText(profileLastUid);
+    btn.textContent = 'Copied';
+  } catch {
+    btn.textContent = 'Copy failed';
+  }
+  setTimeout(() => { btn.textContent = original; }, 1200);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('profileBackdrop').style.display !== 'none') {
+    closeProfile();
+  }
+});
+
+// Phase 8a: first paint goes through the bundle so overview + sessions + users
+// + etl all hydrate from a single round-trip. reloadActiveTab() handles the
+// cache-or-fetch decision; here it's always a miss on initial load.
+reloadActiveTab();
+</script>
+
+</body>
+</html>

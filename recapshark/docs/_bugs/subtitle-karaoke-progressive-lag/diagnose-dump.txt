@@ -1,0 +1,109 @@
+--- karaoke kill switch ---: 
+AppState.karaokeEnabled: true
+AppState.karaokeMode: lazy
+AppState.karaokeSessionFatal: false
+highlight lookahead (ms): -150 (override via ?karaoke_lookahead=N)
+AppState.currentVideoId: xLR3SaA0xTY
+AppState.videoData?.lang: en
+AppState.videoData?.duration: (none)
+AppState.currentLang: en
+: 
+--- display state ---: 
+tState.displayMode: original
+_hasOriginalTextVisible(): true
+: 
+--- player state ---: 
+player.getPlayerState(): 1 (1=playing, 2=paused, 3=buffering)
+player.getCurrentTime(): 38.95494319025033
+: 
+--- chunk counters ---: 
+chunks requested: 1
+chunks fetched (AsrProvider): 0
+chunks cache hits: 1
+chunks failed: 0
+heartbeat-load calls (debug): 240
+AppState.transcriptSyncRaf: set (heartbeat running)
+AppState.trackerInterval: set
+seek-debounce fires (debug): 1
+seek-debounce timer pending: false
+visibility-recovery fires (debug): 0
+document.visibilityState: visible
+session-fatal toast shown (debug): false
+session-fatal toast count (debug): 0
+Sentry captures from _fetchChunk (debug): 0
+session-end log fired (debug): false
+session-end log fired count (debug): 0
+short-video bypass fired (debug): false
+short-video bypass in-flight (debug): false
+short-video bypass fired count (debug): 0
+short-video threshold (sec): 300
+: 
+--- words + ranges ---: 
+_words.length: 1896
+_loadedRanges: [{"start":0,"end":600}]
+_chunksLoaded: []
+_chunksReadyOrFatal: []
+_inFlight (keys): []
+_errorCooldown: {}
+: 
+--- panels (transcript buffer) ---: 
+transcript buffer present: true
+  rows in transcript buffer: 0
+  bilingual-subs in transcript buffer: 0
+  k-word spans in transcript buffer: 0
+: 
+--- panels (subtitle buffer) ---: 
+subtitle buffer present: true
+  rows in subtitle buffer: 0
+  bilingual-subs in subtitle buffer: 0
+  k-word spans in subtitle buffer: 0
+: 
+--- outer panel wrappers (mobile flat-transcript lives here) ---: 
+#fullTranscriptPanel present: true
+  rows in #fullTranscriptPanel: 276
+  k-word spans in #fullTranscriptPanel: 1937
+  display style (computed): flex
+#fullSubtitlePanel present: true
+  rows in #fullSubtitlePanel: 1268
+  k-word spans in #fullSubtitlePanel: 1936
+  display style (computed): flex
+: 
+--- doc-wide (sanity totals) ---: 
+total .transcript-line/-paragraph in document: 1544
+total .bilingual-sub in document: 0
+total .ts-sub in document: 1544
+total .ts-sub WITH text in document: 0
+total .k-word in document: 3873
+panel.bilingual-active classes: (none)
+  sample .ts-sub[0] text: ""
+  sample .ts-sub[0] computed display: none
+  sample .ts-sub[1] text: ""
+  sample .ts-sub[1] computed display: none
+: 
+--- asr_provider vs transcript word count ---: 
+words in AppState.transcriptRawText: 12845
+words from AsrProvider (_words.length): 1896
+  ratio asr_provider/raw: 0.15
+first 3 raw transcript lines: ["Either they're having an affair or we have this very shot.","This would be the only on camera","interview that you're planning to give. Why did you decide to be here today?"]
+: 
+--- per-row sample (first 3 rows of subtitle panel) ---: 
+row 0 rowStart: 0
+row 0 span count: 11
+row 0 span text: Either they're having an affair or we have this very shot.
+row 0 tsText.textContent length: 58
+row 1 rowStart: 5
+row 1 span count: 7
+row 1 span text: This would be the only on camera
+row 1 tsText.textContent length: 32
+row 2 rowStart: 7
+row 2 span count: 14
+row 2 span text: interview that you're planning to give. Why did you decide to be here today?
+row 2 tsText.textContent length: 76
+: 
+--- entity highlighter audit ---: 
+window.EntityHighlighter present: false
+total entity-class spans in #fullSubtitlePanel: 349
+: 
+--- viewport ---: 
+window.innerWidth: 440
+matches (max-width: 900px) [mobile]: true

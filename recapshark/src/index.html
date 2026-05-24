@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google Analytics (GA4) — dev vs prod split by hostname -->
+  <script>
+    // Local dev hosts go to RecapShark Dev property; everything else (prod) goes to RecapShark.
+    // Keeping both IDs inline is fine — Measurement IDs are public by design.
+    window.RS_GA_ID = /^(localhost|127\.0\.0\.1|192\.168\.|10\.)/.test(location.hostname)
+      ? 'G-XXXXXXXXXX'   // dev property (localhost / LAN)
+      : 'G-YYYYYYYYYY';  // production property
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + window.RS_GA_ID;
+    document.head.appendChild(s);
+  </script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', window.RS_GA_ID);
+    if (new URLSearchParams(location.search).get('debug') === 'owner') {
+      gtag('get', window.RS_GA_ID, 'client_id', function(id) {
+        var d = document.createElement('div');
+        d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#000;color:#0f0;padding:16px;font:18px monospace;text-align:center;cursor:pointer';
+        d.textContent = 'GA Client ID (' + window.RS_GA_ID + '): ' + id;
+        d.title = 'Click to copy';
+        d.onclick = function() { navigator.clipboard.writeText(id); d.textContent = 'Copied!'; };
+        document.body.appendChild(d);
+      });
+    }
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0C1E2A" />
+  <title>RecapShark</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Bebas+Neue&family=Poppins:wght@400;500;600&family=Vazirmatn:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&family=Noto+Sans+Hebrew:wght@400;500;600;700&family=Lalezar&family=Fredoka:wght@400;500;600&family=Orbitron:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700;900&family=Noto+Sans+TC:wght@400;500;600;700;900&family=Noto+Sans+JP:wght@400;500;600;700;900&family=Noto+Sans+KR:wght@400;500;600;700;900&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;500;600;700&family=Noto+Sans+Kannada:wght@400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Sans+Gurmukhi:wght@400;500;600;700&family=Noto+Sans+Sinhala:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=Noto+Sans+Lao:wght@400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&family=Noto+Sans+Myanmar:wght@400;500;600;700&family=Noto+Sans+Ethiopic:wght@400;500;600;700&family=Noto+Sans+Armenian:wght@400;500;600;700&family=Noto+Sans+Georgian:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <!-- Phase 3 D3 ext2: mobile-layout.css extracted from dashboard.css's big
+       @media (max-width: 900px) block (lines 2047–3513). MUST load between
+       dashboard.css and brutalist.css so the ~12 body.theme-brutalist
+       mobile-only overrides nested inside it still lose to the main
+       brutalist block (now in brutalist.css) at equal specificity. -->
+  <link rel="stylesheet" href="css/mobile-layout.css" />
+  <link rel="stylesheet" href="css/transcript.css" />
+  <link rel="stylesheet" href="css/title.css" />
+  <link rel="stylesheet" href="css/chapters.css" />
+  <link rel="stylesheet" href="css/summary.css" />
+  <link rel="stylesheet" href="css/home.css" />
+  <link rel="stylesheet" href="css/karaoke.css" />
+  <!-- Phase 3 D3 split — extracted from dashboard.css. Loaded last so
+       their selectors (which all have higher specificity than any rule
+       they could fight) are also source-order winners on top of being
+       specificity winners. -->
+  <link rel="stylesheet" href="css/brutalist.css" />
+  <link rel="stylesheet" href="css/font-matrix.css" />
+  <link rel="stylesheet" href="css/music-only.css" />
+</head>
+<body class="theme-brutalist theme-mode-brutalist">
+
+<!-- TOAST moved inside now-watching-bar -->
+<!-- OVERLAY BACKDROP -->
+<div class="overlay-backdrop" id="backdrop"></div>
+
+<!-- HISTORY PANEL -->
+<div class="overlay-panel history-panel" id="historyPanel">
+  <div class="overlay-header"><span class="overlay-title"> Video History</span><button class="overlay-close"></button></div>
+  <div style="padding:8px 16px;font-size:11px;color:var(--text-muted);font-family:'Space Grotesk',sans-serif;font-weight:600;letter-spacing:1px;text-transform:uppercase">Coming Soon</div>
+  <div class="overlay-body">
+    <div class="history-item"><div class="history-thumb">&#x1F399;</div><div class="history-info"><div class="history-title">Sample Tech Podcast Episode</div><div class="history-meta">Sample Channel  3h 12m</div><div class="history-date">Visited Mar 7, 2026</div></div></div>
+    <div class="history-item"><div class="history-thumb">&#x1F4DA;</div><div class="history-info"><div class="history-title">How to Study Effectively</div><div class="history-meta">Sample Channel  2h 04m</div><div class="history-date">Visited Mar 5, 2026</div></div></div>
+    <div class="history-item"><div class="history-thumb">&#x1F4B0;</div><div class="history-info"><div class="history-title">The Psychology of Money  Full Audiobook</div><div class="history-meta">Sample Channel  5h 30m</div><div class="history-date">Visited Mar 2, 2026</div></div></div>
+    <div class="history-item"><div class="history-thumb">&#x1F3AD;</div><div class="history-info"><div class="history-title">Sample Talk Show Episode</div><div class="history-meta">Sample Channel  45m</div><div class="history-date">Visited today</div></div></div>
+  </div>
+</div>
+
+<!-- EXPORT PANEL -->
+<div class="overlay-panel export-panel" id="exportPanel">
+  <div class="overlay-header"><span class="overlay-title"> Export</span><button class="overlay-close"></button></div>
+  <div class="overlay-body">
+    <div class="export-section">
+      <div class="export-section-title">What to export</div>
+      <div class="export-option selected"><span class="export-icon"></span><div><div class="export-label">Full Transcript</div><div class="export-desc">Plain text, all timestamps included</div></div></div>
+      <div class="export-option"><span class="export-icon"></span><div><div class="export-label">Summary</div><div class="export-desc">Quick recap + RecapShark context</div></div></div>
+      <div class="export-option"><span class="export-icon"></span><div><div class="export-label">Audio Clip</div><div class="export-desc">Extract audio from a time range</div></div></div>
+      <div class="export-option"><span class="export-icon"></span><div><div class="export-label">20-Min Summary Audio</div><div class="export-desc">AI-condensed narration of full video</div></div></div>
+    </div>
+    <div class="export-section"><div class="export-section-title">Time range (optional)</div><div class="export-range"><span class="export-range-label">From</span><input type="text" placeholder="0:00" /><span class="export-range-label">To</span><input type="text" placeholder="45:12" /></div></div>
+    <div class="export-section"><div class="export-section-title">Keyword filter (optional)</div><div class="export-keyword-row"><input type="text" placeholder='e.g. "money", "Traitors", "family"' /></div></div>
+    <button class="btn-export-go">Export Now</button>
+  </div>
+</div>
+
+<!-- LANGUAGE PANEL -->
+<div class="overlay-panel lang-panel" id="langPanel">
+  <div class="overlay-header"><span class="overlay-title"> Language</span><button class="overlay-close"></button></div>
+  <div class="overlay-body">
+    <!-- Video-language label sits ABOVE the search box so the user
+         immediately sees the source language without scrolling, and
+         the search input doesn't need to live above informational
+         content the user can't actually search away from. Populated
+         by _buildLangPanel in translation-lang-panel.js. -->
+    <div id="langPanelSource"></div>
+    <div class="lang-search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input type="text" placeholder="Search language..." /></div>
+    <div id="langPanelContent"></div>
+    <div class="cross-lang-note"> <strong>Smart Search:</strong> Search in your own language — RecapShark matches concepts in the original transcript automatically.</div>
+  </div>
+</div>
+
+<!-- TOOLS PANEL (mobile) — combines Bookmarks + Export as sub-tabs -->
+<div class="overlay-panel tools-panel" id="toolsPanel">
+  <div class="overlay-header"><span class="overlay-title"> Tools</span><button class="overlay-close"></button></div>
+  <div class="tools-subtabs">
+    <button class="tools-subtab active" data-tools-tab="bookmarks">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      Bookmarks
+    </button>
+    <button class="tools-subtab" data-tools-tab="export">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export
+    </button>
+  </div>
+  <div class="overlay-body">
+    <div class="tools-subpane active" id="toolsSubBookmarks">
+      <div class="tools-section-h">Recent bookmarks</div>
+      <div class="bm-row">
+        <span class="bm-idx">1</span>
+        <div class="bm-text">
+          <div class="bm-t1">Kristi Noem segment</div>
+          <div class="bm-t2">The Daily Show</div>
+        </div>
+        <span class="bm-time">0:42</span>
+      </div>
+      <div class="bm-row">
+        <span class="bm-idx">2</span>
+        <div class="bm-text">
+          <div class="bm-t1">Lindsey Graham joke</div>
+          <div class="bm-t2">The Daily Show</div>
+        </div>
+        <span class="bm-time">3:15</span>
+      </div>
+      <div class="bm-row">
+        <span class="bm-idx">3</span>
+        <div class="bm-text">
+          <div class="bm-t1">Pete Hegseth bit</div>
+          <div class="bm-t2">The Daily Show</div>
+        </div>
+        <span class="bm-time">7:28</span>
+      </div>
+      <button class="bm-add" id="bmAddBtn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add bookmark here
+      </button>
+      <div class="bm-hint">Sample data — feature coming soon.</div>
+      <!-- Coming-soon dialog that overlays the tools panel body -->
+      <div class="bm-dialog" id="bmDialog">
+        <div class="bm-dialog-card">
+          <div class="bm-dialog-emoji">📑</div>
+          <div class="bm-dialog-title">Bookmarks coming soon</div>
+          <div class="bm-dialog-body">Not available in early access.</div>
+          <button class="bm-dialog-close" id="bmDialogClose">Got it</button>
+        </div>
+      </div>
+    </div>
+    <div class="tools-subpane" id="toolsSubExport">
+      <div class="export-section">
+        <div class="export-section-title">What to export</div>
+        <div class="export-grid-2col">
+          <div class="export-option selected"><span class="export-icon"></span><div><div class="export-label">Full Transcript</div><div class="export-desc">Plain text + timestamps</div></div></div>
+          <div class="export-option"><span class="export-icon"></span><div><div class="export-label">Summary</div><div class="export-desc">Quick recap</div></div></div>
+          <div class="export-option"><span class="export-icon"></span><div><div class="export-label">Audio Clip</div><div class="export-desc">From a time range</div></div></div>
+          <div class="export-option"><span class="export-icon"></span><div><div class="export-label">20-Min Audio</div><div class="export-desc">AI narration</div></div></div>
+        </div>
+      </div>
+      <div class="export-section"><div class="export-section-title">Keyword filter (optional)</div><div class="export-keyword-row"><input type="text" placeholder='e.g. "money", "family"' /></div></div>
+      <button class="btn-export-go">Export Now</button>
+    </div>
+  </div>
+  <!-- Phase 5c: legally required Privacy link, lives in the Tools panel so the
+       tiny mobile footer doesn't have to give up real estate for it. -->
+  <div class="tools-footer">
+    <a class="tools-privacy-link" href="/privacy.html" target="_blank" rel="noopener">Privacy</a>
+  </div>
+</div>
+
+<!-- HOME VIEW -->
+<div id="homeView" class="home-view">
+  <div class="home-topbar">
+    <div class="home-brand-logo">
+      <img src="art/logo/sharky.png" class="home-sharky" alt="Sharky">
+      <img src="art/logo/recapshark.com/recap.png" class="logo-recap">
+      <svg id="sharkSvg" height="22" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+        <defs>
+          <filter id="sharkColorFilter" x="0" y="0" width="100%" height="100%">
+            <feFlood flood-color="#FF2D78" result="color"/>
+            <feComposite in="color" in2="SourceAlpha" operator="in"/>
+          </filter>
+        </defs>
+        <image id="sharkSvgImg" href="art/logo/recapshark.com/shark.png" height="22" filter="url(#sharkColorFilter)"/>
+      </svg>
+      <img src="art/logo/recapshark.com/.com.png" class="logo-com">
+    </div>
+    <div class="home-yt-badge"><div class="home-yt-dot"></div> YouTube Summarizer</div>
+  </div>
+  <div class="hero">
+    <h1>Already<br><span class="red">watched</span><br>it for <span class="yellow">you!</span></h1>
+    <div class="shark-bubble-wrap">
+      <div class="speech-bubble" id="sharkBubble">
+        <span class="bubble-content" data-cascade-init="1"><span class="bubble-text-inner">Paste any <span class="mark-red">YouTube</span> link. I download the full audio and <span class="mark-yellow">transcript</span> and analyze it in <span class="mark-cyan">seconds</span> for you.</span></span>
+      </div>
+      <div class="shark-float"><img src="art/logo/sharky.png" class="shark-char"></div>
+    </div>
+    <div class="cta-group" id="homePastePrompt">
+      <div class="paste-pill">
+        <input type="url" id="homePasteInput" class="paste-input"
+               placeholder="Paste a YouTube link"
+               autocomplete="off" autocapitalize="off" autocorrect="off"
+               spellcheck="false" inputmode="url" enterkeyhint="go">
+        <button type="button" class="paste-go" id="homePasteGo">Recap →</button>
+      </div>
+    </div>
+    <div id="homeStatus" class="home-status hidden">
+      <span class="home-spinner"></span>
+      <span id="homeStatusText">Preparing...</span>
+    </div>
+    <div class="home-stats">
+      <div class="home-stat"><div class="home-stat-num"><span class="red">100+</span></div><div class="home-stat-lbl">Languages</div></div>
+      <div class="home-stat-divider"></div>
+      <div class="home-stat"><div class="home-stat-num">~5s</div><div class="home-stat-lbl">To recap</div></div>
+      <div class="home-stat-divider"></div>
+      <div class="home-stat"><div class="home-stat-num">∞</div><div class="home-stat-lbl">Video length</div></div>
+    </div>
+    <div class="features-row">
+      <div class="feature"><span class="feature-icon">🧠</span><span class="feature-text">AI Chat</span></div><div class="feature-dot"></div>
+      <div class="feature"><span class="feature-icon">📋</span><span class="feature-text">Full Transcript</span></div><div class="feature-dot"></div>
+      <div class="feature"><span class="feature-icon">🌍</span><span class="feature-text">100+ Languages</span></div><div class="feature-dot"></div>
+      <div class="feature"><span class="feature-icon">⚡</span><span class="feature-text">Under 3s</span></div><div class="feature-dot"></div>
+      <div class="feature"><span class="feature-icon">⏱️</span><span class="feature-text">Chapters</span></div><div class="feature-dot"></div>
+      <div class="feature"><span class="feature-icon">📥</span><span class="feature-text">Export</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS VIEW -->
+<div id="resultsView" class="hidden">
+
+<input type="hidden" id="urlInput">
+<div id="pipelineStatus" style="display:none;"><span id="pipelineMessage"></span></div>
+
+<!--  NAVBAR  -->
+<nav>
+  <a class="nav-brand" href="#">
+    <img src="art/logo/sharky.png" class="nav-sharky" alt="Sharky">
+    <img src="art/logo/recapshark.com/recap.png" class="logo-recap" alt="Recap">
+    <svg id="navSharkSvg" height="22" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+      <defs>
+        <filter id="navSharkColorFilter" x="0" y="0" width="100%" height="100%">
+          <feFlood flood-color="#FF2D78" result="color"/>
+          <feComposite in="color" in2="SourceAlpha" operator="in"/>
+        </filter>
+      </defs>
+      <image id="navSharkSvgImg" href="art/logo/recapshark.com/shark.png" height="22" filter="url(#navSharkColorFilter)"/>
+    </svg>
+    <img src="art/logo/recapshark.com/.com.png" class="logo-com" alt=".com">
+  </a>
+  <div class="nav-divider"></div>
+  <span class="nav-slogan">Skip the Yap</span>
+  <div class="nav-spacer">
+    <button class="nav-icon-btn" title="Video history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      History
+    </button>
+    <div class="font-size-ctrl">
+      <button class="nav-icon-btn font-btn">A&#x2212;</button>
+      <button class="nav-icon-btn font-btn">A+</button>
+    </div>
+  </div>
+  <div class="nav-divider"></div>
+  <div class="nav-mobile-right">
+    <button class="nav-icon-btn nav-chat-btn-m" id="navChatBtnM" aria-label="Open chat"></button>
+    <button class="nav-paste-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+      <span>PASTE</span>
+    </button>
+    <button class="nav-icon-btn nw-history-btn-m" title="History">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+    </button>
+    <button class="user-avatar-btn nw-profile-btn-m"><span class="user-avatar-initials">JD</span></button>
+  </div>
+  <button class="btn-paste">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+    <span>Paste Video <span class="btn-paste-hint">&middot; Ctrl+V</span></span>
+  </button>
+  <div class="user-menu-wrap">
+    <button class="user-avatar-btn" id="userAvatarBtn"><span class="user-avatar-initials">JD</span></button>
+  </div>
+</nav>
+
+<!--  NOW WATCHING BAR  THE KEY ADDITION  -->
+<div class="now-watching-bar">
+  <div class="nw-left">
+    <span class="nw-label">
+      <span class="nw-dot"></span>
+      Now Watching
+    </span>
+    <span class="nw-title"></span>
+  </div>
+
+  <div class="mech-panel" id="mechPanel">
+    <div class="mech-neon-line"></div>
+    <div class="mech-strip-wrap">
+      <div class="mech-strip">
+        <svg class="mech-fade-bg" width="100%" height="100%">
+          <defs>
+            <linearGradient id="mechFadeMask" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="white" stop-opacity="0"/>
+              <stop offset="7%" stop-color="white" stop-opacity="1"/>
+              <stop offset="93%" stop-color="white" stop-opacity="1"/>
+              <stop offset="100%" stop-color="white" stop-opacity="0"/>
+            </linearGradient>
+            <mask id="mechFadeMaskM"><rect width="100%" height="100%" fill="url(#mechFadeMask)"/></mask>
+          </defs>
+          <rect width="100%" height="100%" rx="4" fill="rgba(4,10,20,0.7)" mask="url(#mechFadeMaskM)"/>
+        </svg>
+
+        <div class="mech-status">
+          <span class="mech-status-dot" id="mechStatusDot"></span>
+          <span class="mech-status-label" id="mechStatusLabel">IDLE</span>
+        </div>
+
+        <span class="mech-divider"></span>
+
+        <div class="mech-transport">
+          <button class="mech-strip-btn mech-nav-btn" title="Previous">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="var(--mech-icon)"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+          </button>
+          <button class="mech-strip-btn mech-play-btn" id="mechPlayBtn" title="Play / Pause">
+            <svg id="mechPlayIcon" viewBox="0 0 24 24" width="12" height="12" fill="var(--mech-bright)"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <button class="mech-strip-btn mech-nav-btn" title="Next">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="var(--mech-icon)"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+          </button>
+        </div>
+
+        <span class="mech-divider"></span>
+
+        <div class="mech-time">
+          <span class="mech-time-current" id="mechTimeCurrent">0:00</span>
+          <span class="mech-time-sep">/</span>
+          <span class="mech-time-total">0:00</span>
+        </div>
+
+        <span class="mech-divider"></span>
+
+        <div class="mech-cc-wrap">
+          <button class="mech-strip-btn" id="mechCcBtn" title="Subtitles">
+            <span class="mech-cc-label">CC</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <span id="casualIndicator">🤬 CASUAL MODE</span>
+  <div class="toast" id="toast"></div>
+
+  <div class="nw-right">
+    <span class="nw-meta"></span>
+    <button class="nav-icon-btn nw-history-btn" title="History">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </button>
+    <button class="user-avatar-btn nw-profile-btn"><span class="user-avatar-initials">JD</span></button>
+    <button class="btn-paste nw-paste-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+      <span>Paste</span>
+    </button>
+    <div class="nw-font-ctrl">
+      <button class="nw-font-btn" title="Decrease font size">A&#x2212;</button>
+      <button class="nw-font-btn" title="Increase font size">A+</button>
+    </div>
+    <div class="theme-switcher nw-style-group">
+      <button class="theme-cycle-btn" id="brutalistCycleBtn" title="Brutalist theme"><img src="art/logo/sharky.png" alt="" class="style-icon style-icon-shark"></button>
+      <button class="theme-cycle-btn" id="lightCycleBtn" title="Next light theme"><svg class="style-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button>
+      <button class="theme-cycle-btn" id="darkCycleBtn" title="Next dark theme"><svg class="style-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<!--  DASHBOARD  -->
+<div class="dashboard">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="video-block">
+      <div class="frame-channel-label" id="frameChannelLabel"></div>
+      <div class="frame-glow frame-glow--top" id="glowTop"></div>
+      <div class="frame-glow frame-glow--bottom" id="glowBottom"></div>
+      <div class="video-embed">
+        <div class="video-frame">
+        <div id="ytPlayer"></div>
+        <div id="ytFacade" class="yt-facade" style="display:none;">
+          <img id="ytFacadeImg" src="" alt="Video thumbnail" />
+          <button class="yt-facade-play" aria-label="Play video">
+            <svg class="yt-play-yt" viewBox="0 0 68 48"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.64 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg>
+            <svg class="yt-play-frameless" viewBox="0 0 80 80"><circle cx="40" cy="40" r="36" fill="rgba(0,0,0,0.45)" stroke="#fff" stroke-width="2.5"/><path d="M32 24 L32 56 L60 40 Z" fill="#fff"/></svg>
+          </button>
+        </div>
+        <div id="ytFallback" class="yt-fallback" style="display:none;" aria-hidden="true">
+          <a id="ytFallbackLink" href="#" target="_blank" rel="noopener">
+            <img id="ytFallbackImg" src="" alt="Video thumbnail" />
+            <span class="yt-fallback-label">Embedding disabled by author — Watch on YouTube</span>
+          </a>
+        </div>
+        <div id="ytOverlay" class="yt-overlay" style="display:none;" aria-hidden="true" title="Click to play/pause"></div>
+        <!-- Subtitle overlay lives inside .video-frame so it is (1) captured by
+             the fullscreen request on .video-embed and (2) positioned naturally
+             over the video pixel area. The left-fade mask is applied only to
+             specific video-content children (#ytPlayer, .yt-facade, etc.),
+             not to .video-frame or this overlay, so subtitles stay legible. -->
+        <div id="subtitleOverlay" style="display:none;"><span></span></div>
+        </div>
+        <div class="video-scrubber" id="videoScrubber">
+          <button class="scrubber-btn scrubber-yt-wordmark" id="scrubberYtBtn" title="Watch on YouTube">
+            <span class="yt-wordmark">You<span>Tube</span></span>
+          </button>
+          <span class="scrubber-time" id="scrubberCurrent">0:00</span>
+          <div class="scrubber-track" id="scrubberTrack">
+            <div class="scrubber-fill" id="scrubberFill"></div>
+          </div>
+          <span class="scrubber-time" id="scrubberTotal">0:00</span>
+          <div class="scrubber-vol-wrap" id="scrubberVolWrap">
+            <button class="scrubber-btn" id="scrubberVolBtn" title="Volume">
+              <svg id="scrubberVolIcon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+            </button>
+            <div class="scrubber-vol-slider" id="scrubberVolSlider">
+              <div class="scrubber-vol-track" id="scrubberVolTrack">
+                <div class="scrubber-vol-fill" id="scrubberVolFill" style="height:100%"></div>
+              </div>
+            </div>
+          </div>
+          <button class="scrubber-btn" id="scrubberFullscreenBtn" title="Fullscreen">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          </button>
+        </div>
+      </div>
+      <!-- video controls moved to now-watching bar -->
+
+      <div class="video-meta">
+        <!-- Raw title data (hidden, used as data source by colorization + bilingual) -->
+        <div class="title-data" id="videoTitleData" style="display:none"></div>
+        <!-- Visible title display (double-buffer A/B) -->
+        <div class="title-display-host" id="titleDisplayHost">
+          <div class="ts-display ts-display-active" id="titleDisplayA"></div>
+          <div class="ts-display ts-display-standby" id="titleDisplayB"></div>
+        </div>
+        <div class="video-tags">
+          <span class="vtag" id="videoDate" style="display:none;"></span>
+        </div>
+      </div>
+    </div>
+
+<div class="chapters-block">
+      <div class="music-only-badge" data-i18n-key="musicOnlyBadge">Mostly music — limited spoken content</div>
+      <div class="chapters-display-host" id="topicsList">
+        <div class="cs-display cs-display-active" id="chapterDisplayA">
+          <div class="chapters-header"><span class="section-label">Chapters</span></div>
+          <div class="chapters-list"></div>
+        </div>
+        <div class="cs-display cs-display-standby" id="chapterDisplayB">
+          <div class="chapters-header"><span class="section-label">Chapters</span></div>
+          <div class="chapters-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="resize-handle" id="leftResizeHandle"></div>
+
+  <!-- CENTER PANEL -->
+  <div class="center-panel">
+    <div class="tab-bar">
+      <button class="tab-btn tab-btn-chapters" data-mode="chapters">
+        <div class="story-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg></div>
+        <span class="story-label">Chapters</span>
+      </button>
+      <button class="tab-btn active" data-mode="summary">
+        <div class="story-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+        <span class="story-label">Summary</span>
+      </button>
+      <button class="tab-btn" data-mode="transcript">
+        <div class="story-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
+        <span class="story-label">Transcript</span>
+      </button>
+      <!-- Mobile-only: Tools tab (combines Bookmarks + Export) -->
+      <button class="tab-btn tab-btn-tools-mobile" id="tabBtnToolsMobile" data-action="tools">
+        <div class="story-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+        <span class="story-label">Tools</span>
+      </button>
+      <!-- Desktop-only: tab-bar search input (proxies to #searchInput inside the transcript pane) -->
+      <div class="desktop-toolbar-search" id="desktopToolbarSearch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="desktopSearchInput" placeholder="Search the video for keywords...">
+      </div>
+      <!-- Desktop-only: spacer to push action cluster right -->
+      <div class="desktop-tabbar-spacer"></div>
+      <!-- Desktop-only: action buttons cluster (right side) -->
+      <div class="desktop-toolbar-actions" id="desktopToolbarActions">
+        <div class="desktop-bilingual-slot" id="desktopBilingualSlot"></div>
+        <button class="desktop-action-btn tab-btn-language" id="desktopLangBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
+          <span>Language</span>
+        </button>
+        <button class="desktop-action-btn tab-btn-bookmarks-circle" id="desktopBookmarkBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          <span>Bookmark</span>
+        </button>
+        <button class="desktop-action-btn export-circle-btn" id="desktopExportBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Export</span>
+        </button>
+      </div>
+      <button class="nav-circle-btn tab-btn-bookmarks-circle" data-mode="bookmarks">
+        <div class="story-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></div>
+        <span class="story-label">Bookmarks</span>
+      </button>
+      <button class="nav-circle-btn export-circle-btn">
+        <div class="story-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <span class="story-label">Export</span>
+      </button>
+      <button class="nav-circle-btn tab-btn-language">
+        <div class="story-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+        <span class="story-label">Language</span>
+      </button>
+      <div style="flex:1;"></div>
+      <div class="lang-group" id="langGroup">
+        <button class="lang-switch-all lang-group-btn" id="langSwitchAll" title="Switch all panels to translated language">Switch All</button>
+        <button class="lang-group-btn" id="langToggleBtn" title="Change language"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></button>
+      </div>
+    </div>
+    <div class="lang-bar" id="langBar"><button class="lang-group-btn mobile-lang-globe" title="Change language"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></button><button class="tab-action-btn tab-btn-bookmarks"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Bookmarks</button><button class="tab-action-btn export-tab-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export</button></div>
+    <div class="tab-content">
+      <!-- Mobile-only: floating bilingual flag overlay (top-right of content) -->
+      <div id="mobileFloatingFlags"></div>
+      <div class="tab-pane" id="tab-chapters">
+        <div class="music-only-badge" data-i18n-key="musicOnlyBadge">Mostly music — limited spoken content</div>
+        <div class="chapters-list-mobile" id="chaptersTabList"></div>
+      </div>
+      <div class="tab-pane active" id="tab-summary">
+        <div class="summary-pane" id="summaryPanel">
+          <div class="music-only-badge" data-i18n-key="musicOnlyBadge">Mostly music — limited spoken content</div>
+          <div class="summary-display-host" id="summaryDisplayHost">
+            <div class="ss-display ss-display-active summary-quick-card" id="summaryDisplayA"></div>
+            <div class="ss-display ss-display-standby summary-quick-card" id="summaryDisplayB"></div>
+          </div>
+          <div id="summaryWheelHost" class="summary-wheel-host" style="display:none"></div>
+        </div>
+      </div>
+      <div class="tab-pane" id="tab-transcript" data-panel-id="transcriptPanel">
+        <div class="transcript-note" id="transcriptNote" style="display:none;"></div>
+        <div id="transcriptSearchSection">
+          <div class="transcript-toolbar">
+            <div class="search-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input type="text" class="search-input" id="searchInput" placeholder="Search transcript..." /><button id="searchClear" class="btn-clear-input">Clear</button></div>
+          </div>
+          <div id="searchChips" style="display:none;"></div>
+          <div id="searchResults" style="display:none;"></div>
+        </div>
+        <div class="desktop-panel-btns">
+          <button id="highlightToggleBtn" class="highlight-toggle-btn" aria-label="Toggle highlight" title="Show/hide search highlight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          <button class="desktop-jump-to-now" aria-label="Jump to current position" title="Jump to now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg></button>
+          <button class="desktop-autoscroll-toggle on" aria-label="Toggle auto-scroll" title="Auto-scroll with video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 5v14"/><polyline points="8 15 12 19 16 15"/><polyline points="8 9 12 5 16 9"/></svg></button>
+        </div>
+        <div class="transcript-list" id="fullTranscriptPanel">
+          <div class="transcript-buffer active" id="transcriptBufferA"></div>
+          <div class="transcript-buffer standby" id="transcriptBufferB"></div>
+        </div>
+        <div class="transcript-music-only-placeholder">
+          <div class="transcript-music-only-title" data-i18n-key="musicOnlyTitle">This video is mostly music</div>
+          <div class="transcript-music-only-sub" data-i18n-key="musicOnlySub">There's no real spoken content to transcribe.</div>
+        </div>
+        <div class="transcript-floating-btns"></div>
+      </div>
+      <div class="tab-pane" id="tab-bookmarks">
+        <div class="bookmarks-pane">
+          <div id="bookmarkList"></div>
+          <div class="add-bookmark-row" style="margin-top:16px;"><input type="text" id="bmInput" placeholder="Add note at current timestamp (2:34)..." /><button class="btn-add-bm">+ Bookmark</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="resize-handle" id="resizeHandle"></div>
+
+  <!-- CHAT PANEL -->
+  <div class="chat-panel">
+    <div class="chat-header"><span class="chat-title">AI Chat</span><button class="chat-maximize-btn" id="chatMaximizeBtn" type="button" aria-label="Maximize chat" title="Maximize">
+        <svg class="ic-maximize" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 9 4 4 9 4"/><polyline points="20 9 20 4 15 4"/><polyline points="4 15 4 20 9 20"/><polyline points="20 15 20 20 15 20"/></svg>
+        <svg class="ic-restore" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 4 9 9 4 9"/><polyline points="15 4 15 9 20 9"/><polyline points="9 20 9 15 4 15"/><polyline points="15 20 15 15 20 15"/></svg>
+      </button>
+    </div>
+    <div id="chatEmptyState" class="chat-empty-state">
+      <img src="art/logo/sharky.png" alt="" class="chat-empty-icon" style="width:48px;height:48px;opacity:0.6;">
+      <span class="chat-empty-text">Ready to Feed</span>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-spacer"></div>
+      <div class="chat-bubble bubble-ai"><div class="bubble-label"><img src="art/logo/sharky.png" alt="" class="label-shark"> RecapShark.com</div>Hey! I've watched the full video for you. Ask me anything — key moments, context, opinions, or anything you missed.</div>
+    </div>
+    <div class="chat-hint">Press Enter to send</div>
+    <div class="voice-overlay" id="voiceOverlay"><canvas id="voiceCanvas" width="280" height="100"></canvas><span class="voice-overlay-label">Listening...</span></div>
+    <div class="chat-input-area">
+      <div class="chat-input-wrap">
+        <textarea class="chat-input" id="chatInput" placeholder="Ask about this video..."></textarea>
+        <!-- Phase 5d/5c: point-of-collection privacy disclosure. Tiny ⓘ that links
+             to the privacy page; tooltip explains briefly. Mobile-friendly tap target. -->
+        <a class="chat-privacy-info"
+           href="/privacy.html"
+           target="_blank"
+           rel="noopener"
+           title="Your chat questions are saved to improve RecapShark. Tap to read the full privacy policy."
+           aria-label="Privacy info">&#9432;</a>
+        <button class="btn-clear-input" id="chatClearBtn" title="Clear">Clear</button>
+      </div>
+      <button class="btn-mic" id="chatMicBtn" title="Voice input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="1" width="6" height="11" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
+      <button class="btn-send" id="chatSendBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg></button>
+    </div>
+  </div>
+
+</div>
+
+</div><!-- /resultsView -->
+
+
+
+<div id="ytPlayerHidden" style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none"></div>
+
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script type="module" src="js/main.js"></script>
+
+<!-- Mobile Export FAB -->
+<button class="mobile-export-fab" aria-label="Export"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+
+<!-- Mobile Chat FAB + Overlay -->
+<button class="mobile-chat-fab hidden" id="mobileChatFab" aria-label="Open chat"><img src="art/logo/sharky.png" alt="Chat" class="chat-fab-shark"></button>
+<div class="mobile-chat-backdrop" id="mobileChatBackdrop"></div>
+<div class="mobile-chat-overlay" id="mobileChatOverlay">
+  <div class="mobile-chat-handle"></div>
+  <button class="mobile-chat-close"><span class="mobile-chat-close-label">🦈 Chat</span><span class="mobile-chat-close-btn">← Back to recap</span></button>
+  <div class="chat-panel-mobile" id="mobileChatBody"></div>
+</div>
+<!-- Phase 9a (2026-05-07): the 7 ui scripts that lived here as classic
+     <script> tags are now imported by src/js/main.js so Vite bundles them
+     into the main chunk. See main.js for the full list. -->
+
+
+
+<div class="user-dropdown" id="userDropdown">
+  <div class="user-dropdown-info"><div class="user-dropdown-name">John Doe</div><div class="user-dropdown-email">john@example.com</div></div>
+  <div class="user-dropdown-divider"></div>
+  <button class="user-dropdown-item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Switch Account</button>
+  <button class="user-dropdown-item signout"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign Out</button>
+</div>
+
+</body>
+</html>
+

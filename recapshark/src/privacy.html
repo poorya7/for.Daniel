@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy — RecapShark</title>
+  <link rel="icon" type="image/png" href="/art/logo/sharky.png" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      line-height: 1.65;
+      padding: 32px 16px 80px;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    .topbar {
+      display: flex; align-items: center; gap: 12px;
+      padding-bottom: 24px; border-bottom: 1px solid #1a1a2e; margin-bottom: 32px;
+    }
+    .topbar img { height: 32px; }
+    .back-link {
+      margin-left: auto; color: #00d4ff; text-decoration: none;
+      font-size: 13px; padding: 6px 12px; border: 1px solid #1a1a2e; border-radius: 6px;
+    }
+    .back-link:hover { background: #12121e; border-color: #00d4ff44; }
+    h1 {
+      font-size: 28px; margin-bottom: 8px;
+      background: linear-gradient(135deg, #b794f4, #00d4ff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .updated { font-size: 12px; color: #666; margin-bottom: 32px; }
+    h2 {
+      font-size: 18px; color: #f5f5f5; margin: 28px 0 10px;
+      padding-top: 16px; border-top: 1px solid #1a1a2e;
+    }
+    p { margin-bottom: 12px; color: #c0c0c8; font-size: 15px; }
+    ul { margin: 8px 0 14px 22px; color: #c0c0c8; font-size: 15px; }
+    li { margin-bottom: 6px; }
+    code {
+      background: #12121e; color: #b794f4; padding: 1px 6px;
+      border-radius: 4px; font-family: ui-monospace, monospace; font-size: 13px;
+    }
+    a { color: #00d4ff; }
+    .callout {
+      background: #12121e; border-left: 3px solid #b794f4;
+      padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0;
+      font-size: 14px; color: #c0c0c8;
+    }
+    .contact-mail { color: #b794f4; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <img src="/art/logo/sharky.png" alt="">
+      <div>
+        <div style="font-size: 13px; font-weight: 600;">RecapShark</div>
+        <div style="font-size: 11px; color: #666;">Privacy</div>
+      </div>
+      <!-- "Back to app" tries to close this tab first (the common case: this
+           page was opened via target="_blank" from the chat ⓘ icon, so the tab
+           has no real history and the user just wants to return to where they
+           were). If the browser blocks `window.close()` — happens when the user
+           navigated here directly via URL — we fall back to /. -->
+      <a class="back-link" href="/" id="backToApp">&larr; Back to app</a>
+    </header>
+
+    <h1>Privacy Policy</h1>
+    <div class="updated">Last updated: April 2026</div>
+
+    <p>
+      RecapShark is a YouTube summarizer and chat assistant. This page explains
+      exactly what data we collect, where it goes, who we send it to, and how to
+      delete it. We try to be plain about it instead of hiding behind legalese.
+    </p>
+
+    <h2>What we collect</h2>
+    <ul>
+      <li>
+        <b>YouTube URLs you paste</b>, so we can fetch the captions or audio and
+        generate a summary, chapters, and transcript.
+      </li>
+      <li>
+        <b>Chat messages you send to the AI</b> (the questions you ask about a
+        video). We store the full text in our database so we can study how people
+        actually use the chat and improve the assistant. This is the only place
+        where free-form text you typed gets saved long-term.
+      </li>
+      <li>
+        <b>Anonymous usage analytics</b> via Google Analytics 4 — page views,
+        button clicks, which tab you spent time on, which language you translated
+        to, length of your chat questions (not the text). These events do not
+        include any name, email, or content you typed.
+      </li>
+      <li>
+        <b>Approximate location</b> (city / country) and <b>device info</b>
+        (mobile vs desktop, OS, browser) — derived from your IP address by Google
+        Analytics. We never see or store your raw IP.
+      </li>
+      <li>
+        <b>Per-session aggregates</b> — a small precomputed summary of each visit
+        (timestamps, event counts, video IDs you watched, country/device) used by
+        our internal dashboard to understand how people use the app.
+      </li>
+    </ul>
+
+    <div class="callout">
+      <b>What we do <i>not</i> collect:</b> we don't ask for an account, name, or
+      email. We don't read or store your microphone audio (voice input is
+      processed in your browser by your browser's speech engine and discarded).
+      We don't sell or share data with third parties for advertising. We don't
+      use tracking pixels.
+    </div>
+
+    <h2>Where the data lives</h2>
+    <ul>
+      <li>
+        <b>Anonymous analytics events:</b> Google Analytics 4 and Google
+        BigQuery (Google's servers, United States).
+      </li>
+      <li>
+        <b>Chat messages, session aggregates, and cached YouTube titles:</b> a
+        private Supabase-managed Postgres database in the
+        <b>United States (US East / Ohio, <code>us-east-2</code>)</b>.
+      </li>
+      <li>
+        <b>App backend:</b> hosted on a DigitalOcean droplet (United States).
+        Requests pass through it in transit but no user content is stored on the
+        droplet itself.
+      </li>
+    </ul>
+
+    <h2>Third parties we send your data to</h2>
+    <p>
+      Generating a summary or answering a chat question requires sending pieces
+      of your input to outside services. These are all standard, paid API
+      providers — none of them is given permission to use your data to train
+      their own models. Here's the full list of where data flows:
+    </p>
+    <ul>
+      <li>
+        <b>OpenAI</b> — receives the YouTube transcript text and your chat
+        questions in order to generate the summary, chapters, translations, and
+        chat responses. Data is sent over their API
+        (<code>api.openai.com</code>); per OpenAI's API policy, API inputs are
+        not used to train their models and are retained for up to 30 days for
+        abuse monitoring.
+      </li>
+      <li>
+        <b>SubsProvider</b> — receives the YouTube video URL/ID so it can fetch the
+        captions / subtitle track. No personal data is sent.
+      </li>
+      <li>
+        <b>YouTube (Google) — Data API v3 + oEmbed</b> — receives the video ID
+        when we look up the title, channel, duration, chapters, and comments.
+        No personal data is sent.
+      </li>
+      <li>
+        <b>Google Cloud Translate</b> — receives summary / transcript text when
+        you click a translation language so it can translate it. No personal
+        data is sent.
+      </li>
+      <li>
+        <b>Google Analytics 4</b> — receives the anonymous events described
+        above directly from your browser.
+      </li>
+      <li>
+        <b>Google BigQuery</b> — Google Analytics auto-exports the same events
+        into BigQuery so we can query them. No new data is collected here; it's
+        the same GA4 events in a queryable warehouse.
+      </li>
+      <li>
+        <b>Supabase</b> (Postgres hosting) — receives the chat messages, session
+        aggregates, and cached YouTube titles described in "Where the data
+        lives" above.
+      </li>
+      <li>
+        <b>DigitalOcean</b> (server hosting) — our backend runs on their
+        infrastructure. Encrypted HTTPS requests pass through it; no user
+        content is stored at rest on the droplet.
+      </li>
+      <li>
+        <b>AsrProvider</b> (audio transcription) — listed for completeness;
+        integration exists in the codebase but is currently <b>disabled</b> in
+        production (no data is sent). If we re-enable it for videos without
+        captions, audio extracted from the YouTube video would be sent for
+        transcription.
+      </li>
+    </ul>
+
+    <h2>How long we keep it</h2>
+    <ul>
+      <li>
+        <b>Google Analytics events:</b> 14 months (Google Analytics default
+        retention).
+      </li>
+      <li>
+        <b>BigQuery analytics events:</b> kept indefinitely (we may shorten this
+        in the future).
+      </li>
+      <li>
+        <b>Chat messages and session aggregates in Supabase:</b> kept
+        indefinitely while RecapShark operates. Deleted on request — see
+        "Your rights" below.
+      </li>
+      <li>
+        <b>Cookies in your browser:</b> see the Cookies section.
+      </li>
+    </ul>
+
+    <h2>Cookies and local storage</h2>
+    <p>
+      RecapShark sets a small number of first-party cookies and local-storage
+      values:
+    </p>
+    <ul>
+      <li>
+        <code>_ga</code>, <code>_ga_*</code>: Google Analytics anonymous client
+        and session IDs.
+      </li>
+      <li>
+        <code>rs_is_owner</code>: only set on devices we've marked as the
+        operator's so the internal analytics dashboard can filter our own
+        traffic out. Not set on regular visitors.
+      </li>
+      <li>
+        Supabase Auth session (local storage): only set on the operator's
+        device when signing into the internal owner dashboard at
+        <code>/owner-login.html</code>. Not used or set during normal app use.
+      </li>
+    </ul>
+    <p>No third-party advertising cookies. No tracking pixels.</p>
+
+    <h2>Your rights</h2>
+    <p>
+      You can ask us to delete every chat message and session record tied to
+      your browser at any time. Email us (see Contact) with the approximate
+      dates and the city you visited from, and we'll wipe matching rows. We
+      typically respond within a few business days.
+    </p>
+    <p>
+      You can also opt out of Google Analytics globally via the
+      <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener">official Google opt-out browser add-on</a>,
+      or block analytics in your browser's privacy settings.
+    </p>
+
+    <h2>EU / UK visitors (GDPR)</h2>
+    <p>
+      If you visit RecapShark from the EU or the UK, the operator of the site
+      acts as the data controller for the data described above. The lawful
+      bases we rely on are:
+    </p>
+    <ul>
+      <li>
+        <b>Legitimate interest</b> for anonymous usage analytics and storing
+        chat messages to improve the product.
+      </li>
+      <li>
+        <b>Performance of a contract</b> for the data strictly needed to deliver
+        the service you asked for (e.g. sending your URL to SubsProvider to fetch
+        captions, sending your chat question to OpenAI to get an answer).
+      </li>
+    </ul>
+    <p>
+      Under the GDPR you have the right to access, correct, delete, restrict,
+      object to, or port the personal data we hold about you. To exercise any of
+      these, email us at the address below. You also have the right to lodge a
+      complaint with your local data-protection authority.
+    </p>
+    <p>
+      Note that some processors listed above (OpenAI, Google, Supabase,
+      DigitalOcean) are based in the United States. International transfers
+      rely on the providers' standard contractual clauses where required.
+    </p>
+
+    <h2>California visitors (CCPA)</h2>
+    <p>
+      If you're a California resident, the CCPA gives you the right to know
+      what categories of personal information we collect, the right to request
+      deletion, and the right to opt out of any sale of personal information.
+      <b>RecapShark does not sell personal information</b>, and there is no
+      "Do Not Sell My Personal Information" link to provide because no sale
+      happens. To request deletion, email us at the address below.
+    </p>
+
+    <h2>Children</h2>
+    <p>
+      RecapShark is not directed at children under 13 (or under 16 in the EU/UK)
+      and we do not knowingly collect data from them. If you believe a child has
+      submitted data to RecapShark, email us and we'll delete it.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      Questions, deletion requests, or anything else:
+      <span class="contact-mail">privacy@recapshark.com</span>
+    </p>
+
+    <h2>Changes</h2>
+    <p>
+      If we ever change what's collected, who we send it to, or how long we
+      keep it, we'll bump the "Last updated" date at the top and surface a
+      notice in the app. Material changes — for example, adding a new data
+      category, adding a new third-party processor, or enabling AI features
+      that work on raw data we hadn't previously sent out — will be flagged
+      before they take effect and won't be applied retroactively to data
+      already collected.
+    </p>
+  </div>
+
+  <script>
+    // Close-this-tab behavior for the "Back to app" link. Attempts:
+    //   1. window.close() — works for tabs opened via target="_blank" with
+    //      no extra history (Chrome/Safari mobile both allow this).
+    //   2. If the close was suppressed (we'll know because we're still here
+    //      ~120ms later), fall back to / in the same tab.
+    document.getElementById('backToApp').addEventListener('click', function (e) {
+      e.preventDefault();
+      try { window.close(); } catch (_) { /* ignore */ }
+      setTimeout(function () { window.location.href = '/'; }, 120);
+    });
+  </script>
+</body>
+</html>

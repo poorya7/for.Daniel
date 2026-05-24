@@ -1,0 +1,844 @@
+/* ═══════════════════════════════════════════════════════════
+   transcript.css — Transcript & Subtitle panel styles
+   Extracted from dashboard.css for separation of concerns.
+   Transcript direction/font is per-buffer (not #resultsView).
+   ═══════════════════════════════════════════════════════════
+   font-system: hardcoded font-family declarations in this file are
+   intentional. Categories:
+     1. .ts-chip — JetBrains Mono (timestamps, Latin numerals).
+     2. .toggle-btn, .transcript-note — Inter / Space Grotesk for UI
+        labels (currently English; if localized later, migrate to
+        var(--font-content-heading)).
+     3. Brutalist .ts-text override has font-family stripped;
+        font-family flows from theme-level --font-content-body redef.
+        See dashboard.css :root + body.theme-brutalist.
+
+   .ts-text base + .search-input + bilingual-sub LTR reset all use
+   var(--font-content-body) — never hardcode font-family on those.
+
+   Per-buffer .lang-XX rules carry layout tweaks (line-height) only;
+   font face from cascade + script-disambiguation block in dashboard.css.
+
+   See docs/_tech/13_LANGUAGE_AND_FONTS.md.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Tab panes ── */
+.transcript-pane { overflow: hidden; position: relative; }
+#tab-transcript { position: relative; }
+
+/* ── Desktop auto-scroll & jump-to-now buttons ── */
+.desktop-panel-btns { position: absolute; bottom: 43px; right: 36px; z-index: 20; display: flex; gap: 6px; }
+.desktop-autoscroll-toggle,
+.desktop-jump-to-now,
+.highlight-toggle-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 51px; height: 70px; border-radius: 999px; padding: 0;
+  cursor: pointer; transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  border: 2px solid var(--border); background: transparent; color: var(--text-secondary);
+}
+.desktop-autoscroll-toggle svg,
+.desktop-jump-to-now svg,
+.highlight-toggle-btn svg { width: 26px; height: 26px; }
+.desktop-autoscroll-toggle:hover,
+.desktop-jump-to-now:hover,
+.highlight-toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+.desktop-autoscroll-toggle:active,
+.desktop-jump-to-now:active,
+.highlight-toggle-btn:active { transform: scale(0.9); }
+.desktop-autoscroll-toggle svg,
+.desktop-jump-to-now svg,
+.highlight-toggle-btn svg { flex-shrink: 0; pointer-events: none; width: 26px; height: 26px; }
+.desktop-autoscroll-toggle.on { background: transparent; color: var(--accent); border-color: var(--accent); border-width: 2px; box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 30%, transparent); }
+.desktop-jump-to-now { opacity: 0; pointer-events: none; width: 0; overflow: hidden; padding: 0; border: none; margin: 0; transition: opacity 0.25s, width 0.25s, padding 0.25s, border 0.25s, color 0.2s, border-color 0.2s, box-shadow 0.2s; }
+.desktop-jump-to-now.visible { opacity: 1; pointer-events: auto; width: 51px; border: 2px solid var(--border); }
+.transcript-floating-btns { position: absolute; bottom: 16px; right: 16px; display: flex; gap: 8px; z-index: 10; pointer-events: none; }
+.transcript-floating-btns > * { pointer-events: auto; }
+.scroll-top-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: #fff; border: none; cursor: pointer; display: none; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: opacity 0.2s, transform 0.2s; }
+.scroll-top-btn:hover { opacity: 0.9; transform: scale(1.05); }
+.scroll-top-btn.visible { display: flex; }
+.scroll-top-btn svg { width: 18px; height: 18px; }
+/* Highlight toggle: hidden by default, shown when search has matches */
+.highlight-toggle-btn { opacity: 0; pointer-events: none; width: 0; overflow: hidden; padding: 0; border: none; margin: 0; transition: opacity 0.25s, width 0.25s, padding 0.25s, border 0.25s, color 0.2s, border-color 0.2s, box-shadow 0.2s; }
+.highlight-toggle-btn.visible { opacity: 1; pointer-events: auto; width: 51px; border: 2px solid var(--border); }
+.highlight-toggle-btn.on { background: transparent; color: var(--accent); border-color: var(--accent); border-width: 2px; box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 30%, transparent); }
+.highlight-toggle-btn.off { color: var(--text-muted); }
+#fullTranscriptPanel.highlight-hidden .ts-text mark { background: none !important; color: inherit !important; }
+
+/* ── Toolbar & search ── */
+.transcript-toolbar { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; background: var(--surface); flex-shrink: 0; }
+.search-wrap { flex: 1; position: relative; }
+.search-wrap svg { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--text-muted); width: 13px; height: 13px; }
+.search-input { width: 100%; padding: 7px 50px 7px 28px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-content-body); font-size: 12px; color: var(--text-primary); background: var(--bg); outline: none; transition: border-color 0.15s; }
+.search-input:focus { border-color: var(--accent); background: #fff; }
+.search-input::placeholder { color: var(--text-muted); }
+.toggle-btn { display: flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; color: var(--text-secondary); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 7px; cursor: pointer; white-space: nowrap; transition: all 0.15s; font-family: 'Inter', sans-serif; }
+.toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+.toggle-btn.on { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+.toggle-btn .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+/* ── Transcript note ── */
+.transcript-note {
+  font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 500; color: var(--accent, #0891B2);
+  background: var(--accent-light, #C8EEF5); border-radius: var(--radius-sm, 6px);
+  padding: 8px 12px; flex-shrink: 0; margin: 6px 8px;
+}
+
+/* ── Panel wrapper ── */
+.transcript-list { flex: 1; position: relative; overflow: hidden; padding: 0; }
+
+/* ── Double-buffer for crossfade ── */
+.transcript-buffer {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  /* `scroll-position` hint asks the browser to hardware-accelerate scrolling
+     of this container — content moves on the compositor thread instead of
+     forcing a full main-thread repaint each frame, which the imperative
+     `panel.scrollTop = X` per-rAF write in player.js's `_dsEaseStep` was
+     otherwise triggering during karaoke + auto-scroll. */
+  will-change: opacity, scroll-position;
+  padding: 6px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.transcript-buffer::-webkit-scrollbar { width: 4px; }
+.transcript-buffer::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.transcript-buffer.active { z-index: 2; pointer-events: auto; opacity: 1; }
+.transcript-buffer.standby { z-index: 1; pointer-events: none; opacity: 0; }
+
+/* ── Per-buffer RTL direction (transcript direction comes ONLY from here, never #resultsView) ── */
+.transcript-buffer.rtl .transcript-line,
+.transcript-buffer.rtl .transcript-paragraph { direction: rtl; padding: 6px 16px 6px 60px; }
+/* In side-by-side grid mode, row layout is always LTR (chip | col2 | col3). RTL applies to text cells only. */
+.bilingual-side-by-side.rtl .transcript-paragraph,
+.bilingual-side-by-side.rtl .transcript-line { direction: ltr; padding: 12px 20px; }
+.transcript-buffer.rtl .ts-text,
+.transcript-buffer.rtl .transcript-line .ts-text,
+.transcript-buffer.rtl .transcript-paragraph .ts-text { direction: rtl; text-align: right; }
+.transcript-buffer.ltr .ts-text,
+.transcript-buffer.ltr .transcript-line .ts-text,
+.transcript-buffer.ltr .transcript-paragraph .ts-text { direction: ltr; text-align: left; }
+
+/* ── Per-buffer non-Latin script line-height tweak ──
+   Font face is auto-picked per codepoint via --font-i18n cascade and the
+   script-disambiguation rules in dashboard.css. Only the layout tweak
+   (extra line-height for dense scripts) lives here. */
+.transcript-buffer.lang-fa .ts-text,
+.transcript-buffer.lang-ar .ts-text,
+.transcript-buffer.lang-he .ts-text { line-height: 1.7; }
+
+/* ── Transcript lines & paragraphs ──
+   `contain: layout` bounds each row's layout work to itself — if anything
+   inside (karaoke spans, translation streaming, bilingual toggle) changes,
+   the browser doesn't need to recompute layout for the rest of the panel.
+   Defense-in-depth alongside the `will-change: scroll-position` on
+   .transcript-buffer above. Glow + transform are NOT clipped (we're
+   using `layout` containment, not `paint`), so the karaoke halo still
+   extends visibly beyond row boundaries. */
+.transcript-line { display: flex; align-items: flex-start; gap: 10px; padding: 6px 60px 6px 16px; cursor: pointer; transition: background 0.12s; border-left: 3px solid transparent; contain: layout; }
+.transcript-line ~ .transcript-line { border-top: 2px solid var(--border); }
+.transcript-line:hover { }
+.transcript-line.hidden { display: none; }
+.transcript-paragraph { display: flex; align-items: flex-start; gap: 12px; padding: 12px 60px 12px 16px; cursor: pointer; transition: background 0.12s; contain: layout; }
+.transcript-paragraph ~ .transcript-paragraph { border-top: 2px solid var(--border); }
+.transcript-paragraph:hover { }
+.transcript-paragraph .ts-text { line-height: 1.7; }
+
+/* ── Timestamp chip & text ── */
+/* Chip border uses --accent so it themes alongside the chip bg/text
+   (was hardcoded cyan #67C8D8 which ignored theme cycles). */
+.ts-chip { font-family: 'Inter', var(--font-i18n); font-size: 14px; font-weight: 500; color: var(--chip-text); background: var(--chip-bg); padding: 2px 7px; border-radius: 4px; flex-shrink: 0; margin-top: 1px; border: 1px solid var(--accent); white-space: nowrap; min-width: 48px; text-align: center; box-sizing: border-box; }
+.ts-text { font-family: var(--font-content-body); font-size: 14px; font-weight: var(--font-weight-transcript-latin); color: var(--text-secondary); line-height: 1.65; }
+.ts-sub, .bilingual-sub { font-weight: var(--font-weight-transcript-latin); }
+.ts-text.lang-script-dense,
+.ts-sub.lang-script-dense,
+.bilingual-sub.lang-script-dense { font-weight: var(--font-weight-transcript-dense); }
+.transcript-line .ts-text { flex: 1; }
+/* Search-match highlight uses --accent-light/--accent-hover so it themes
+   (was hardcoded yellow #FEF08A / brown #713F12 that ignored theme). */
+.ts-text mark { background: var(--accent-light); color: var(--accent-hover); border-radius: 2px; padding: 0 2px; }
+
+/* ── Entity coloring (dates + numbers) ─────────────────────────
+   Pure-regex highlighting from src/js/ui/entity-highlighter.js.
+   Colors are decoupled from the summary --highlight-* vars on
+   purpose: themed olive/tan tones (#7C8B6F etc.) read as invisible
+   on cream/white surfaces — fine for the dense summary palette,
+   but transcripts need scan-pop for sparse dates/numbers. Both
+   defaults are saturated mid-tones picked to read cleanly on
+   light AND dark themes. Themes can override via --tx-date-color
+   and --tx-num-color if a per-theme tweak is needed.
+   Karaoke ALWAYS wins on the active word; search-match <mark> wins
+   inside its highlight via inherit. */
+/* Entity highlights — color + deliberate font-weight: 600 (NOT inherit).
+   The previous `font-weight: inherit` was set when transcript text was
+   uniformly weight 500. After font-system v2.1 added the bilingual-mode
+   Latin weight bump (.bilingual-side-by-side ... :not(.lang-script-dense) {
+   font-weight: 600 }), inherit produced cross-script asymmetry: Latin
+   entities in bilingual mode picked up 600, but Persian/Arabic/CJK
+   entities (in dense scripts that don't get the Latin-only bump) stayed
+   at 500 — so the same NER name looked bolder when quoted in English
+   text vs. its native language. A pinned 600 makes highlights equally
+   prominent in every script + every mode. The original "size jump"
+   concern (heavier strokes occupy more visual real estate) still
+   applies but is uniform across all entities, so readers see a
+   consistent visual rhythm rather than a per-language inconsistency. */
+/* tx-* layered system (audited 2026-05-08, Phase 3 B5):
+
+   The same entity classes (.tx-name, .tx-discourse, .tx-num, etc.) appear
+   in MULTIPLE rendering contexts that have DIFFERENT background colors,
+   so each context needs different ink colors for legibility:
+
+   1. Transcript / bilingual-sub  → token-driven (these rules below).
+                                    Tokens defined on :root in dashboard.css.
+   2. Desktop brutalist chat-bubble → maps tx-* → var(--c-*) where the
+                                      --c-* set is scoped to body.theme-brutalist
+                                      in dashboard.css (warm cream-bubble palette).
+   3. Mobile chat-bubble (any theme) → hardcoded Tailwind 800 + !important
+                                       (cream bubble bg requires darker ink).
+   4. chat-chip                     → hardcoded Tailwind 800 + !important
+                                       (cream chip bg, all themes).
+   5. Desktop brutalist chat-chip   → mapped to var(--c-*) + !important
+                                      (chip on dark navy needs vibrant ink).
+   6. Desktop brutalist bubble-user → mapped to var(--c-*) + !important.
+   7. Mobile brutalist bubble-user  → hardcoded creams + !important.
+
+   The tokens-with-fallback pattern below is the canonical approach; the
+   hardcoded contexts (3, 4, 7) are technical-debt slated for unification
+   in Phase 4b — convert them to context-scoped token overrides
+   (e.g. `.chat-bubble { --tx-discourse-color: #0369A1; }`) so the cascade
+   does the work and the !importants drop away. Not done in Phase 3 B5
+   because it's a real refactor (mobile chat, chip-on-cream, brutalist
+   chip-on-navy each have distinct visual targets) and warrants its own
+   verification pass. */
+.tx-date      { color: var(--tx-date-color,      #C2410C); }
+.tx-num       { color: var(--tx-num-color,       #15803D); }
+.tx-name      { color: var(--tx-name-color,      #7C3AED); }
+.tx-org       { color: var(--tx-org-color,       #1D4ED8); }
+.tx-gpe       { color: var(--tx-gpe-color,       #0E7490); }
+.tx-event     { color: var(--tx-event-color,     #4338CA); }
+.tx-stretch   { color: var(--tx-stretch-color,   #DB2777); }
+.tx-discourse { color: var(--tx-discourse-color, #0EA5E9); }
+.tx-exclaim   { color: var(--tx-exclaim-color,   #DC2626); }
+.tx-punct     { color: var(--tx-punct-color,     #A16207); }
+.tx-bracket   { color: var(--tx-bracket-color,   #738F66); font-size: 0.875em; }
+
+/* karaoke active-word styles moved to css/karaoke.css (char-level wave) */
+
+.ts-text mark .tx-date,
+.ts-text mark .tx-num,
+.ts-text mark .tx-name,
+.ts-text mark .tx-org,
+.ts-text mark .tx-gpe,
+.ts-text mark .tx-event,
+.ts-text mark .tx-stretch,
+.ts-text mark .tx-discourse,
+.ts-text mark .tx-exclaim,
+.ts-text mark .tx-punct,
+.ts-text mark .tx-bracket,
+.bilingual-sub mark .tx-date,
+.bilingual-sub mark .tx-num,
+.bilingual-sub mark .tx-name,
+.bilingual-sub mark .tx-org,
+.bilingual-sub mark .tx-gpe,
+.bilingual-sub mark .tx-event,
+.bilingual-sub mark .tx-stretch,
+.bilingual-sub mark .tx-discourse,
+.bilingual-sub mark .tx-exclaim,
+.bilingual-sub mark .tx-punct,
+.bilingual-sub mark .tx-bracket { color: inherit; }
+
+/* Bilingual sub already overrides general highlight color to --highlight-tr
+   (see summary.css). Reassert entity colors so they remain visible
+   inside translated bilingual rows. */
+.bilingual-sub .tx-date      { color: var(--tx-date-color,      #C2410C); }
+.bilingual-sub .tx-num       { color: var(--tx-num-color,       #15803D); }
+.bilingual-sub .tx-name      { color: var(--tx-name-color,      #7C3AED); }
+.bilingual-sub .tx-org       { color: var(--tx-org-color,       #1D4ED8); }
+.bilingual-sub .tx-gpe       { color: var(--tx-gpe-color,       #0E7490); }
+.bilingual-sub .tx-event     { color: var(--tx-event-color,     #4338CA); }
+.bilingual-sub .tx-stretch   { color: var(--tx-stretch-color,   #DB2777); }
+.bilingual-sub .tx-discourse { color: var(--tx-discourse-color, #0EA5E9); }
+.bilingual-sub .tx-exclaim   { color: var(--tx-exclaim-color,   #DC2626); }
+.bilingual-sub .tx-punct     { color: var(--tx-punct-color,     #A16207); }
+.bilingual-sub .tx-bracket   { color: var(--tx-bracket-color,   #738F66); }
+
+/* ── Progress slot ── */
+#transcriptProgressSlot {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+/* ── Desktop bilingual: side by side (per-row 3-column grid) ── */
+@media (min-width: 901px) {
+  /* Each row becomes its own 3-col grid (matches Option B test page) */
+  .bilingual-side-by-side .transcript-paragraph,
+  .bilingual-side-by-side .transcript-line {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr;
+    gap: 12px;
+    padding: 12px 20px;
+  }
+  /* Bilingual sub (original text) — always LTR, app's English font.
+     !important overrides body[data-translate-lang] rules that force RTL on all .bilingual-sub */
+  .bilingual-side-by-side .transcript-paragraph > .bilingual-sub,
+  .bilingual-side-by-side .transcript-line > .bilingual-sub {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-content-body) !important;
+    font-style: normal !important;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    direction: ltr !important;
+    text-align: left !important;
+    min-width: 0;
+    overflow-wrap: break-word;
+  }
+  /* Primary text (translated) — always RTL + correct font for RTL languages */
+  .bilingual-side-by-side.rtl .ts-text {
+    direction: rtl;
+    text-align: right;
+  }
+  /* Row separator */
+  .bilingual-side-by-side .transcript-paragraph + .transcript-paragraph,
+  .bilingual-side-by-side .transcript-line + .transcript-line {
+    border-top: 1px solid rgba(12,30,42,0.04);
+  }
+  /* Alt-row coloring — covers the entire row naturally */
+  .bilingual-side-by-side .transcript-paragraph.alt-row,
+  .bilingual-side-by-side .transcript-line.alt-row {
+    background: rgba(8,145,178,0.08);
+  }
+  /* Swapped mode: bilingual-sub (original) moves to col 2, ts-text (translated) to col 3 */
+  .bilingual-cols-swapped .ts-text { order: 2; }
+  .bilingual-cols-swapped .bilingual-sub { order: 1; }
+}
+
+/* RTL font/direction for transcript bilingual subs */
+/* RTL bilingual sub direction/line-height. Font face from --font-i18n
+   cascade + script-disambiguation rules in dashboard.css. */
+body[data-translate-lang="fa"] .transcript-list .bilingual-sub,
+body[data-translate-lang="ar"] .transcript-list .bilingual-sub,
+body[data-translate-lang="he"] .transcript-list .bilingual-sub { direction: rtl; text-align: right; line-height: 1.75; }
+body[data-translate-lang="ur"] .transcript-list .bilingual-sub { direction: rtl; text-align: right; }
+
+/* Switched mode: .ts-text gets translated content direction */
+/* Switched-mode RTL ts-text direction/line-height. */
+body.bilingual-mode-switched[data-translate-lang="fa"] .ts-text,
+body.bilingual-mode-switched[data-translate-lang="ar"] .ts-text,
+body.bilingual-mode-switched[data-translate-lang="he"] .ts-text { direction: rtl; text-align: right; line-height: 1.75; }
+
+/* Switched mode: transcript subs reset to LTR */
+body.bilingual-mode-switched[data-translate-lang="fa"] .transcript-list .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="ar"] .transcript-list .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="he"] .transcript-list .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="ur"] .transcript-list .bilingual-sub { direction: ltr; text-align: left; font-family: var(--font-content-body); }
+
+/* Transcript panel alignment — match toolbar padding */
+#tab-transcript > .section-lang-tabs {
+  padding-left: 16px;
+  margin-top: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Mobile overrides
+   ═══════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+  #tab-transcript.tab-pane.active {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #tab-transcript #transcriptSearchSection {
+    flex-shrink: 0;
+    order: 0;
+  }
+  #tab-transcript #langBar {
+    flex-shrink: 0;
+    order: 1;
+  }
+  #tab-transcript .transcript-list {
+    /* Fills the bounded parent; flat-transcript.js manages its own
+       internal scrolling. */
+    flex: 1 1 auto;
+    min-height: 0;
+    order: 2;
+    overflow: hidden;
+    position: relative;
+    z-index: 0;
+  }
+
+  /* ── Flat transcript scroller (mobile).
+     .flat-transcript-outer wraps .flat-transcript-scroller (the native
+     overflow-y:auto viewport — iOS runs this on the compositor thread)
+     which wraps .flat-transcript-content (paragraph rows). */
+  .flat-transcript-scroller {
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    /* Fade top + bottom edges via mask-image so paragraphs dissolve as
+       they enter/exit the viewport. Same approach as the summary panel
+       (.summary-native-scroll in summary.css) — zero extra DOM, no
+       z-index management, hardware-accelerated. */
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      black 24px,
+      black calc(100% - 28px),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      black 24px,
+      black calc(100% - 28px),
+      transparent 100%
+    );
+  }
+  /* Reduced motion: kill the mask so screen-reader / print-style users
+     see edge content un-faded. */
+  @media (prefers-reduced-motion: reduce) {
+    .flat-transcript-scroller {
+      -webkit-mask-image: none;
+      mask-image: none;
+    }
+  }
+  .flat-transcript-content {
+    padding: 4px 0 16px;
+  }
+
+  /* ── Mobile transcript-pane skeleton.
+     Sibling to the desktop transcriptBufferA/B inside #fullTranscriptPanel.
+     Visible during the rewind-blur window (and on first paint of a video
+     page) before the FlatTranscript wrapper mounts and replaces the
+     container contents. FlatTranscript.prepare() does
+     container.innerHTML = '', so the placeholder is removed cleanly when
+     real data lands — no explicit teardown needed.
+
+     Carries the SAME card silhouette as the chapters skeleton — surface
+     bg, border, radius, shadow, ~14px side margin. Reason: under the
+     rewind-mobile-menus blur(3px) + the standalone 55%-opacity feel,
+     row-on-cream text washed out completely (debugged 2026-05-11 via
+     playwright capture — empty cream pane). The card silhouette is the
+     load-bearing visual element; the text inside is incidental.
+
+     z-index 1 over the absolute .transcript-buffer A/B divs so the
+     placeholder sits on top while they're still in the DOM. They're
+     transparent anyway, but the buffer.active z-index:2 from the
+     non-scoped rule would otherwise stack them above. */
+  .flat-transcript-placeholder {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    padding: 8px 0;
+    margin: 12px 14px 14px;
+    background: var(--surface);
+    /* Stronger border + shadow than the chapters card uses — the placeholder
+       lives under the rewind-mobile-menus blur(3px), which softens 1px edges
+       into the cream until the card silhouette disappears. 2px border +
+       2-stop shadow keep the card outline readable through the blur so the
+       user sees "white panel with loading content" not "loose text floating
+       on cream". */
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow:
+      0 1px 2px rgba(12, 30, 42, 0.08),
+      0 4px 12px rgba(12, 30, 42, 0.06);
+    pointer-events: none;
+    user-select: none;
+  }
+  /* Placeholder rows render inside a .flat-transcript-content wrapper, so
+     every .flat-transcript-content .transcript-paragraph rule (display:block,
+     padding 8px 14px, no border-top, .alt-row zebra tint) applies verbatim.
+     The only placeholder-specific concern is interaction — these aren't real
+     rows the user can tap, so neutralize pointer/text interaction. */
+  .flat-transcript-placeholder .transcript-paragraph-placeholder {
+    pointer-events: none;
+    user-select: none;
+  }
+  /* Hide desktop double-buffer rows on mobile — FlatTranscript owns the
+     mobile transcript surface. The buffers stay in the DOM (renderer-mobile-
+     panels and FlatTranscript both still expect them to exist) but they
+     shouldn't paint their .skeleton-line shimmers on top of our placeholder
+     card. */
+  #fullTranscriptPanel > .transcript-buffer { display: none; }
+
+  /* ── RTL + per-script overrides for the mobile flat list.
+     Mobile flat-transcript lives OUTSIDE the desktop `.transcript-buffer`
+     scope, so the buffer-level rules at lines 88-105 don't reach it. The
+     panel container gets `.rtl` / `.lang-fa` / `.lang-ar` / `.lang-he`
+     applied by renderer-mobile-panels.js (mobile FlatTranscript lifecycle),
+     mirrored here. */
+  /* The PARAGRAPH carries `direction: rtl` so its inline flow reverses —
+     chip becomes the rightmost inline element, text wraps from the right
+     edge. Setting direction only on .ts-text wasn't enough: the chip is
+     a sibling of .ts-text inside .transcript-paragraph, so the paragraph's
+     direction controls where the chip lands. Mirrors the desktop rule at
+     [.transcript-buffer.rtl .transcript-paragraph]. */
+  .flat-transcript.rtl .transcript-paragraph {
+    direction: rtl;
+  }
+  /* Direction/alignment apply to .ts-text only. The bilingual side-by-side
+     rules below force .ts-sub to LTR Inter regardless of panel lang —
+     mirrors the bilingual convention that secondary text (.ts-sub) is the
+     original (assumed Latin/English) language.
+     Font size bumps +1px for RTL scripts (Persian/Arabic/Hebrew): their
+     glyphs render visibly smaller than Latin at the same px size due to
+     letter proportions, so 15px Latin ≈ 16px RTL by perceived size. */
+  .flat-transcript.rtl .ts-text {
+    direction: rtl;
+    text-align: right;
+    font-size: 15px;
+  }
+  /* Margin moves to the chip's logical-end side (visual left in RTL) —
+     that's the side facing the text, so the gap stays between chip and
+     text instead of between chip and the row's right edge. */
+  .flat-transcript.rtl .ts-chip {
+    margin: 0 0 0 8px;
+  }
+  /* Per-script fonts on the primary text only. Without these, mobile
+     would paint Persian/Arabic/Hebrew in the default Inter font (looks
+     like FOUT but is permanent). */
+  /* Mobile non-Latin script line-height tweak. Font face from cascade +
+     disambiguation. */
+  .flat-transcript.lang-fa .ts-text,
+  .flat-transcript.lang-ar .ts-text,
+  .flat-transcript.lang-he .ts-text { line-height: 1.7; }
+
+  /* ── Per-paragraph layout (mobile flat list)
+     Override the global flex layout (chip + text in separate columns) so
+     the chip floats inline with the first line, and continuation lines
+     wrap under it using the full width. Matches the original
+     "continuation lines reclaim the chip column" behavior carried over
+     from the legacy 3D-cylinder transcript UI. */
+  .flat-transcript-content .transcript-paragraph {
+    display: block;
+    padding: 8px 14px;
+    cursor: default;
+  }
+  /* No border between paragraphs — alternating row tint is the only
+     separator. */
+  .flat-transcript-content .transcript-paragraph + .transcript-paragraph {
+    border-top: none;
+  }
+  /* Chip sits inline at the start of line 1; line 2+ wrap from the left
+     edge of the paragraph, not around the chip. (float:left would cause
+     lines 2-3 to also wrap around the chip's vertical extent — not what
+     we want; we want continuation lines to use the FULL width.) */
+  .flat-transcript-content .ts-chip {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 8px 0 0;
+  }
+  /* Text is inline so it flows naturally with the chip on line 1 and
+     wraps to full-width lines below. Mobile bumps Latin scripts to 16px
+     for readability on small screens; RTL scripts (Persian/Arabic/Hebrew)
+     are sized separately by .flat-transcript.rtl .ts-text below + the
+     dashboard.css ID-specific rules. */
+  .flat-transcript-content .ts-text {
+    display: inline;
+    font-size: 16px;
+  }
+  /* Hide bilingual sub by default; only show when bilingual is active. */
+  .flat-transcript-content .ts-sub {
+    display: none;
+  }
+  /* ── Bilingual: side-by-side 2-col grid (primary-cell | secondary-cell).
+     The chip lives INSIDE the primary cell (.ts-primary wrapper around
+     .ts-chip + .ts-text), so it flows inline-block at the start of the
+     primary text, with text wrapping around it — same trick as single-
+     language mode. This avoids the wasted vertical space below the chip
+     that an explicit chip column would leave when text wraps to multi-
+     line.
+       - minmax(0, 1fr) on both cells: without min:0, the longer-glyph
+         language hogs the row; min:0 lets cells share width fairly.
+       - align-items: start — each cell starts at its top edge, so chip
+         on line 1 lines up with the first line of secondary text.
+     Both languages live in one paragraph element so scrollToTime stays
+     accurate — primary and secondary scroll together. */
+  #fullTranscriptPanel.bilingual-active .flat-transcript-content .transcript-paragraph {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+    padding: 8px 14px;
+  }
+  /* Primary cell — chip and text share inline flow. The chip's existing
+     inline-block + margin styling (above) makes it sit at the start of
+     the cell with text wrapping around its vertical extent. */
+  #fullTranscriptPanel.bilingual-active .flat-transcript-content .ts-primary {
+    min-width: 0;
+    overflow-wrap: break-word;
+    line-height: 1.5;
+  }
+  /* Secondary cell — pinned to Inter LTR regardless of panel lang. The
+     bilingual convention assumes `.ts-sub` is always the original (Latin/
+     English) language. If a future requirement breaks that assumption
+     (e.g. Persian video translated to English), switch to per-element
+     data-lang attrs; for now, parity with the existing bilingual pattern. */
+  #fullTranscriptPanel.bilingual-active .flat-transcript-content .ts-sub {
+    display: block;
+    min-width: 0;
+    overflow-wrap: break-word;
+    font-family: var(--font-content-body);
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    direction: ltr;
+    text-align: left;
+  }
+  /* Swap toggle — flip the visual order of primary and secondary cells.
+     CSS-only via `order`; data is unchanged (translation-bilingual.js
+     just toggles the .bilingual-cols-swapped class on the panel, and
+     the swap button updates its flag positions to match). */
+  #fullTranscriptPanel.bilingual-active.bilingual-cols-swapped .flat-transcript-content .ts-primary { order: 2; }
+  #fullTranscriptPanel.bilingual-active.bilingual-cols-swapped .flat-transcript-content .ts-sub { order: 1; }
+
+  /* Alt-row zebra tint on mobile flat list — desktop has the same rule
+     inside its own @media block; duplicating here so the mobile flat
+     transcript matches visually. */
+  .flat-transcript-content .transcript-paragraph.alt-row {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+  body.theme-brutalist .flat-transcript-content .transcript-paragraph.alt-row {
+    background: rgba(8,145,178,0.08);
+  }
+  #tab-transcript .transcript-note {
+    order: 0;
+  }
+
+  .transcript-floating-btns {
+    position: fixed;
+    bottom: 24px;
+    right: 12px;
+    left: auto;
+    z-index: 20;
+    pointer-events: auto;
+  }
+
+  #transcriptSearchSection {
+    display: none !important;
+    position: sticky !important;
+    top: 0;
+    z-index: 14;
+    background: var(--surface) !important;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 8px 0 0 var(--surface) !important;
+  }
+  /* Mobile transcript search: colors routed through theme vars so light /
+     dark / brutalist cycles all restyle this section. Previously hardcoded
+     to a "cyber ocean" dark palette regardless of theme. */
+  #transcriptSearchSection {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  #transcriptSearchSection .transcript-toolbar {
+    background: var(--surface);
+    padding: 6px 12px;
+    gap: 6px;
+    border-bottom: none;
+  }
+  #transcriptSearchSection .search-input {
+    border: 1.5px solid var(--border);
+    padding: 4px 8px 4px 28px;
+    font-size: 11px;
+    /* Use the i18n-aware content body font so non-Latin search input
+       (Persian, Arabic, CJK, etc.) renders in the right script font.
+       Hardcoded Space Grotesk monospace was breaking Persian search
+       on mobile — Phase 6 audit P1. */
+    font-family: var(--font-content-body);
+    background: var(--surface2);
+    color: var(--text-primary);
+    border-radius: 0;
+  }
+  #transcriptSearchSection .search-input::placeholder { color: var(--text-muted); }
+  #transcriptSearchSection .search-input:focus { border-color: var(--accent); background: var(--surface2); }
+  #transcriptSearchSection .search-wrap svg { color: var(--text-muted); }
+  #transcriptSearchSection .btn-clear-input { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Brutalist theme overrides
+   ═══════════════════════════════════════════════════════════ */
+
+body.theme-brutalist .transcript-toolbar {
+  background: #FFFFFF;
+  border-bottom: 1px solid #0C1E2A;
+}
+body.theme-brutalist .search-input {
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  border: 2px solid rgba(12,30,42,0.35);
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 rgba(12,30,42,0.2);
+  background: #F5F0E8;
+}
+body.theme-brutalist .search-input:focus {
+  border-color: #0891B2;
+  background: #FFFFFF;
+  box-shadow: 3px 3px 0 #0891B2;
+}
+body.theme-brutalist .toggle-btn {
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  border: 1.5px solid #0C1E2A;
+  border-radius: 2px;
+  box-shadow: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #F5F0E8;
+}
+@media (hover: hover) {
+  body.theme-brutalist .toggle-btn:hover {
+    color: #FFFFFF;
+  }
+}
+body.theme-brutalist .toggle-btn.on {
+  background: #EE5E48;
+  color: #FFFFFF;
+  border-color: #0C1E2A;
+}
+body.theme-brutalist .transcript-line {
+  border-left: 4px solid transparent;
+}
+body.theme-brutalist .transcript-line:hover { }
+body.theme-brutalist .transcript-paragraph:hover { }
+body.theme-brutalist .ts-chip {
+  font-family: 'Space Grotesk', var(--font-i18n);
+  font-weight: 700;
+  border: 1.5px solid #0891B2;
+  border-radius: 4px;
+  box-shadow: none;
+  background: #0891B2;
+  color: #FFFFFF;
+}
+body.theme-brutalist .ts-text {
+  /* font-family from theme-level --font-content-body redefinition (Syne).
+     Persian/Arabic/CJK glyphs cascade through var(--font-i18n) to the
+     correct script font. Stripping the hardcoded 'Syne', sans-serif here
+     was the missed migration that produced the ugly-Persian-transcript
+     bug after the v2.1 rollout. */
+  font-weight: 500;
+}
+/* Desktop-only size — mobile owns its own .ts-text size via the
+   #fullTranscriptPanel.lang-* / .flat-transcript-content rules. */
+@media (min-width: 901px) {
+  body.theme-brutalist .ts-text {
+    font-size: 14px;
+  }
+}
+body.theme-brutalist .ts-text mark {
+  background: rgba(8,145,178,0.2);
+  color: #0C1E2A;
+  border-radius: 2px;
+  padding: 0 3px;
+  border: 1px solid #0C1E2A;
+}
+body.theme-brutalist .scroll-top-btn {
+  border: 2px solid #0C1E2A;
+  border-radius: 4px;
+  box-shadow: 2px 2px 0 rgba(12,30,42,0.2);
+  background: #FFD100;
+  color: #0C1E2A;
+}
+body.theme-brutalist .scroll-top-btn:hover {
+  background: #0C1E2A;
+  color: #FFD100;
+}
+body.theme-brutalist .transcript-list { scrollbar-width: none; }
+@media (min-width: 901px) {
+  body.theme-brutalist .transcript-list {
+    --picker-band-half: 100px;
+    background: #FFFFFF;
+    border: 2px solid #0C1E2A;
+    border-radius: 4px;
+    box-shadow: 4px 4px 0 rgba(12,30,42,0.2);
+    margin: 18px 20px;
+  }
+
+  /* ── Picker-band fade overlays (desktop, all themes) ──
+     Previously scoped to body.theme-brutalist; now applies to every theme
+     so the active-paragraph focus-band effect works across light / dark /
+     brutalist on desktop. The overlay color is derived from --surface via
+     color-mix so each theme's overlay matches its own content surface. */
+  .transcript-list {
+    --picker-band-half: 100px;
+  }
+  .transcript-list::before,
+  .transcript-list::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    background: color-mix(in srgb, var(--surface) 30%, transparent);
+    pointer-events: none;
+    z-index: 3;
+    opacity: 0;
+    transition: opacity 0.6s ease, background 0.4s ease;
+  }
+  .transcript-list.picker-band-on::before,
+  .transcript-list.picker-band-on::after {
+    opacity: 1;
+  }
+  .transcript-list.picker-playing::before,
+  .transcript-list.picker-playing::after {
+    background: color-mix(in srgb, var(--surface) 80%, transparent);
+  }
+  .transcript-list::before {
+    top: 0;
+    height: calc(50% - var(--picker-band-half, 60px));
+    box-shadow: 0 4px 12px rgba(12,30,42,0.25);
+  }
+  .transcript-list::after {
+    bottom: 0;
+    height: calc(50% - var(--picker-band-half, 60px));
+    box-shadow: 0 -4px 12px rgba(12,30,42,0.25);
+  }
+
+  body.theme-brutalist .transcript-paragraph,
+  body.theme-brutalist .transcript-line {
+    padding: 9px 20px;
+  }
+  /* Zebra-stripe alt-row bg for all themes (was brutalist-only).
+     Uses --accent so each theme gets its own accent-tinted alternating row. */
+  .transcript-paragraph.alt-row,
+  .transcript-line.alt-row {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+  /* Brutalist override: --accent is dark navy (#0C1E2A), which at 8% on
+     white reads as a flat grey. Use the brutalist secondary cyan (#0891B2,
+     same hue used for chips/scrollbars) so the zebra stripe is the cooler
+     light-blue users associate with the brutalist look. */
+  body.theme-brutalist .transcript-paragraph.alt-row,
+  body.theme-brutalist .transcript-line.alt-row {
+    background: rgba(8,145,178,0.08);
+  }
+  body.theme-brutalist .transcript-paragraph + .transcript-paragraph,
+  body.theme-brutalist .transcript-line + .transcript-line {
+    border-top: 1px solid rgba(12,30,42,0.04);
+  }
+
+}
+body.theme-brutalist .transcript-note {
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  border: 2px solid #0C1E2A;
+  border-radius: 4px;
+  background: #F5F0E8;
+}
+
+/* Belt-and-suspenders guard: the transcript skeleton is only inserted on
+   mobile (isNarrowViewport gate at write time in loading-state.js), but if
+   the user resizes from narrow to wide mid-load the leftover placeholder
+   DOM would otherwise stay visible behind the desktop double-buffer. */
+@media (min-width: 901px) {
+  .flat-transcript-placeholder { display: none; }
+}

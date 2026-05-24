@@ -1,0 +1,177 @@
+/* ═══════════════════════════════════════════════════════════
+   font-matrix.css — Script disambiguation matrix
+   Extracted from src/css/dashboard.css 2026-05-08 (Phase 3 D3).
+   Original line range: 5764–5918.
+
+   Why a separate file: this block is exclusively per-language
+   font-family overrides (one container-class chain per script that
+   shares a Unicode block with another). It has no rules anywhere else
+   in the codebase that fight it (specificity 0,3,1+ ensures it wins
+   over base body / panel font-family at lower specificity), so the
+   load-order doesn't matter — safe to live in its own file regardless
+   of where index.html includes it.
+
+   Companion guardrails: every block is marked with an inline
+   "font-system: intentional" line in its preamble comment (see the
+   blocks below). Do NOT strip those markers when touching this file;
+   they protect the rules from accidental "simplifications" that would
+   re-trigger Han-unification glyphs and similar script-mixing bugs.
+
+   Architecture context: see docs/_tech/13_LANGUAGE_AND_FONTS.md.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════
+   Font system: script disambiguation
+   ═══════════════════════════════════════════════════════════
+   The --font-i18n cascade alone cannot pick the correct script font when
+   multiple languages share a Unicode block:
+     - Arabic + Persian + Urdu + Kurdish + Pashto + Sindhi all use U+0600–06FF
+     - Japanese + Simplified Chinese + Traditional Chinese share Han ideographs
+     - Devanagari is shared by Hindi, Marathi, Nepali (different conventions)
+
+   These rules force the correct face when a CONTAINER (or a leaf element
+   like a chat bubble or greeting bubble) is tagged with the lang class.
+   Latin loanwords inside non-Latin content fall through var(--font-content-body)
+   so they keep the theme's Latin display character (Inter / Syne / etc.).
+
+   These rules do NOT cover the mixed-script-quoted-span case (Arabic name
+   inside an English summary, Japanese title inside a French summary, etc.)
+   — that requires backend `<span lang="X">` emission, explicitly out of
+   scope for v2.1.
+
+   Extensibility: when a user reports a glyph-style regression for a
+   language not listed here (e.g. Urdu users wanting Nastaliq instead of
+   Vazirmatn's Naskh), add a new disambiguation block following the same
+   selector pattern. Convention: list every text-bearing surface — desktop
+   + mobile transcript, desktop + mobile summary, desktop + mobile
+   chapters, title context lines on both .ts-display and .ts1-wrap, chat
+   bubbles + greeting bubble + chips, bilingual subs in two modes,
+   language picker native names.
+   ═══════════════════════════════════════════════════════════ */
+
+/* font-system: intentional - Arabic script disambiguation
+   Forces Noto Sans Arabic over Vazirmatn (which would render Arabic
+   codepoints with Persian glyph variants — wrong for Modern Standard
+   Arabic readers). */
+.transcript-buffer.lang-ar .ts-text,
+.flat-transcript.lang-ar .ts-text,
+.ss-display.lang-ar .summary-quick-text,
+.ss-display.lang-ar .context-text,
+.summary-wheel-host.lang-ar .summary-quick-text,
+.summary-wheel-host.lang-ar .context-text,
+.cs-display.lang-ar .chapter-name,
+.cs-display.lang-ar .chapter-num,
+.cs-display.lang-ar .chapters-header .section-label,
+#resultsView.lang-ar #chaptersTabList .chapter-name,
+#resultsView.lang-ar #chaptersTabList .chapter-num,
+.ts-display.lang-ar .ts1-top,
+.ts-display.lang-ar .ts1-bottom,
+.ts1-wrap.lang-ar .ts1-top,
+.ts1-wrap.lang-ar .ts1-bottom,
+.title-bilingual-sub.lang-ar,
+.chat-bubble.lang-ar,
+.gb-display.lang-ar,
+.chat-chip.lang-ar,
+body[data-translate-lang="ar"] .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="ar"] .summary-quick-text,
+body.bilingual-mode-switched[data-translate-lang="ar"] .context-text,
+body.bilingual-mode-switched[data-translate-lang="ar"] .chapter-name,
+body.bilingual-mode-switched[data-translate-lang="ar"] .ts-text,
+.lang-option[data-lang="ar"] .lang-native {
+  font-family: 'Noto Sans Arabic', var(--font-content-body);
+}
+
+/* font-system: intentional - Japanese script disambiguation
+   Forces Noto Sans JP over Noto Sans SC (which would render Japanese
+   kanji with Simplified-Chinese glyph variants — Han unification problem). */
+.transcript-buffer.lang-ja .ts-text,
+.flat-transcript.lang-ja .ts-text,
+.ss-display.lang-ja .summary-quick-text,
+.ss-display.lang-ja .context-text,
+.summary-wheel-host.lang-ja .summary-quick-text,
+.summary-wheel-host.lang-ja .context-text,
+.cs-display.lang-ja .chapter-name,
+.cs-display.lang-ja .chapter-num,
+.cs-display.lang-ja .chapters-header .section-label,
+#resultsView.lang-ja #chaptersTabList .chapter-name,
+#resultsView.lang-ja #chaptersTabList .chapter-num,
+.ts-display.lang-ja .ts1-top,
+.ts-display.lang-ja .ts1-bottom,
+.ts1-wrap.lang-ja .ts1-top,
+.ts1-wrap.lang-ja .ts1-bottom,
+.title-bilingual-sub.lang-ja,
+.chat-bubble.lang-ja,
+.gb-display.lang-ja,
+.chat-chip.lang-ja,
+body[data-translate-lang="ja"] .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="ja"] .summary-quick-text,
+body.bilingual-mode-switched[data-translate-lang="ja"] .context-text,
+body.bilingual-mode-switched[data-translate-lang="ja"] .chapter-name,
+body.bilingual-mode-switched[data-translate-lang="ja"] .ts-text,
+.lang-option[data-lang="ja"] .lang-native {
+  font-family: 'Noto Sans JP', var(--font-content-body);
+}
+
+/* font-system: intentional - Traditional Chinese script disambiguation
+   Forces Noto Sans TC over Noto Sans SC (Traditional and Simplified
+   render the same Han codepoints with different glyph shapes —
+   e.g. 體 vs 体, 國 vs 国). */
+.transcript-buffer.lang-zh-tw .ts-text,
+.flat-transcript.lang-zh-tw .ts-text,
+.ss-display.lang-zh-tw .summary-quick-text,
+.ss-display.lang-zh-tw .context-text,
+.summary-wheel-host.lang-zh-tw .summary-quick-text,
+.summary-wheel-host.lang-zh-tw .context-text,
+.cs-display.lang-zh-tw .chapter-name,
+.cs-display.lang-zh-tw .chapter-num,
+.cs-display.lang-zh-tw .chapters-header .section-label,
+#resultsView.lang-zh-tw #chaptersTabList .chapter-name,
+#resultsView.lang-zh-tw #chaptersTabList .chapter-num,
+.ts-display.lang-zh-tw .ts1-top,
+.ts-display.lang-zh-tw .ts1-bottom,
+.ts1-wrap.lang-zh-tw .ts1-top,
+.ts1-wrap.lang-zh-tw .ts1-bottom,
+.title-bilingual-sub.lang-zh-tw,
+.chat-bubble.lang-zh-tw,
+.gb-display.lang-zh-tw,
+.chat-chip.lang-zh-tw,
+body[data-translate-lang="zh-tw"] .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="zh-tw"] .summary-quick-text,
+body.bilingual-mode-switched[data-translate-lang="zh-tw"] .context-text,
+body.bilingual-mode-switched[data-translate-lang="zh-tw"] .chapter-name,
+body.bilingual-mode-switched[data-translate-lang="zh-tw"] .ts-text,
+.lang-option[data-lang="zh-tw"] .lang-native {
+  font-family: 'Noto Sans TC', var(--font-content-body);
+}
+
+/* font-system: intentional - Korean script disambiguation
+   Hangul has its own Unicode blocks so the cascade already lands on
+   Noto Sans KR without disambiguation. Listed here for parity and
+   future-safety against ordering changes in --font-i18n. */
+.transcript-buffer.lang-ko .ts-text,
+.flat-transcript.lang-ko .ts-text,
+.ss-display.lang-ko .summary-quick-text,
+.ss-display.lang-ko .context-text,
+.summary-wheel-host.lang-ko .summary-quick-text,
+.summary-wheel-host.lang-ko .context-text,
+.cs-display.lang-ko .chapter-name,
+.cs-display.lang-ko .chapter-num,
+.cs-display.lang-ko .chapters-header .section-label,
+#resultsView.lang-ko #chaptersTabList .chapter-name,
+#resultsView.lang-ko #chaptersTabList .chapter-num,
+.ts-display.lang-ko .ts1-top,
+.ts-display.lang-ko .ts1-bottom,
+.ts1-wrap.lang-ko .ts1-top,
+.ts1-wrap.lang-ko .ts1-bottom,
+.title-bilingual-sub.lang-ko,
+.chat-bubble.lang-ko,
+.gb-display.lang-ko,
+.chat-chip.lang-ko,
+body[data-translate-lang="ko"] .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="ko"] .summary-quick-text,
+body.bilingual-mode-switched[data-translate-lang="ko"] .context-text,
+body.bilingual-mode-switched[data-translate-lang="ko"] .chapter-name,
+body.bilingual-mode-switched[data-translate-lang="ko"] .ts-text,
+.lang-option[data-lang="ko"] .lang-native {
+  font-family: 'Noto Sans KR', var(--font-content-body);
+}

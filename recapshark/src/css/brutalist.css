@@ -1,0 +1,1482 @@
+/* ===========================================================
+   brutalist.css - Neobrutalist theme reskin (full)
+   Extracted from src/css/dashboard.css 2026-05-08 (Phase 3 D3 ext).
+   Original line range: 3837-5247.
+
+   What lives here: every body.theme-brutalist rule that fell
+   inside the canonical "NEOBRUTALIST THEME - full visual reskin"
+   ... "end neobrutalist theme" markers in dashboard.css (kept without
+   comment-syntax here to avoid nested-comment parse errors). That
+   is most of the brutalist look-and-feel: nav, theme switcher, user
+   menu, now-watching bar, mech panel, video embed + scrubber, center
+   panel, transcript, chat panel + messages + input, overlays,
+   bookmarks, scrollbars, RTL, casual-mode, etc.
+
+   What does NOT live here (left in dashboard.css on purpose):
+   - The body.theme-brutalist token redefinition near :root
+     (line ~258) that the rest of the file consumes via var(--*).
+   - The body.theme-brutalist .gb-host / .gb-display per-display
+     greeting-bubble rules (line ~1213) that sit next to the
+     non-brutalist .gb-display base rules.
+   - body.theme-brutalist rules inside the mobile @media block
+     (lines ~2673..2993) that override mobile chip / tab UI.
+   - body.theme-mode-brutalist .mobile-chat-overlay rules at the
+     bottom of dashboard.css (different class - theme-MODE - and
+     scoped to mobile chat).
+
+   Cascade: brutalist.css is loaded after dashboard.css in
+   src/index.html, so rules here keep their original "later wins"
+   relationship vs the scattered brutalist rules above. The chosen
+   selector specificity (body.theme-brutalist + at least one more
+   class/id) also wins over any base rule at lower specificity
+   regardless of file order.
+   =========================================================== */
+
+/* ═══════════════════════════════════════════════════════════
+   NEOBRUTALIST THEME — full visual reskin
+   Matches homepage DNA: Unbounded / Syne / Space Grotesk,
+   hard offset shadows, thick borders, 0-4px radius, bold accents
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── "Shark" theme (default) ── class is .theme-brutalist for legacy reasons */
+body.theme-brutalist {
+  /* Theme-level role-var redefinition. Base rules using var(--font-content-*)
+     pick up these overrides via cascade — so most per-element brutalist
+     `font-family` overrides become deletable (the role var already produces
+     the right value for content elements). The trailing var(--font-i18n)
+     keeps mixed-script glyphs landing on the right script font.
+
+     Note on chat: brutalist chat bubbles use JetBrains Mono for the
+     terminal aesthetic (the brutalist signature). Persian/Arabic/CJK
+     glyphs fall through var(--font-i18n) which ends in sans-serif —
+     non-Latin scripts don't have monospace traditions, so a sans-serif
+     fallback is the right answer. */
+  --font-content-body:    'Syne', var(--font-i18n);
+  --font-content-heading: 'Unbounded', var(--font-i18n);
+  --font-content-chat:    'JetBrains Mono', var(--font-i18n);
+
+  --radius: 2px;
+  --radius-sm: 2px;
+  --shadow-sm: 2px 2px 0 rgba(12,30,42,0.2);
+  --shadow-md: 3px 3px 0 rgba(12,30,42,0.2);
+  --shadow-lg: 4px 4px 0 rgba(12,30,42,0.2);
+  --bg: #F5F0E8;
+  --surface: #FFFFFF;
+  --border: #E0D9CC;
+  --text-primary: #0C1E2A;
+  --text-secondary: #3D3D3D;
+  --text-muted: #8A8070;
+  --accent: #0C1E2A;
+  --accent-light: #F5F0E8;
+  --accent-hover: #1C3A50;
+  --chip-bg: #F5F0E8;
+  --chip-text: #0C1E2A;
+  --nav-muted: #8A8070;
+}
+
+/* ── Navbar ── */
+body.theme-brutalist nav {
+  background: #0C1E2A;
+  border-bottom: none;
+  z-index: 10000;
+  margin-right: 330px;
+}
+body.theme-brutalist .nav-brand {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+body.theme-brutalist .nav-brand .domain { color: #0891B2; font-weight: 700; }
+body.theme-brutalist .nav-divider { background: #2A5A70; }
+body.theme-brutalist .nav-slogan {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+body.theme-brutalist .nav-icon-btn {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: all 0.1s;
+}
+body.theme-brutalist .nav-icon-btn:hover:not(.nav-chat-btn-m) {
+  background: #1C3A50;
+  color: #FFFFFF;
+  border-color: rgba(255,255,255,0.25);
+}
+body.theme-brutalist .nav-icon-btn.active {
+  background: #0891B2;
+  color: #fff;
+  border-color: #0891B2;
+}
+body.theme-brutalist .btn-paste {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 900;
+  font-size: 10px;
+  background: #FFFFFF;
+  color: #0C1E2A;
+  border: 2px solid #0C1E2A;
+  border-radius: 2px;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  transition: all 0.1s;
+}
+body.theme-brutalist .btn-paste:hover {
+  background: #DC2626;
+  color: #fff;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+}
+body.theme-brutalist .btn-paste-hint { font-family: 'Syne', sans-serif; font-weight: 600; }
+
+/* ── Theme switcher ── */
+body.theme-brutalist .theme-cycle-btn {
+  border-radius: 0;
+  background: #0C1E2A;
+}
+body.theme-brutalist #brutalistCycleBtn {
+  border-radius: 2px 0 0 2px;
+}
+body.theme-brutalist #darkCycleBtn {
+  border-radius: 0 2px 2px 0;
+}
+body.theme-brutalist .theme-cycle-btn:hover {
+  background: #1C3A50;
+}
+body.theme-brutalist .theme-cycle-btn.is-active {
+  background: rgba(255,200,0,0.22);
+  border-color: rgba(255,200,0,0.6);
+  box-shadow: 0 0 6px #0891B2, 0 0 12px rgba(8,145,178,0.4), inset 0 0 6px rgba(8,145,178,0.15);
+  filter: drop-shadow(0 0 6px rgba(8,145,178,0.9));
+  text-shadow: 0 0 8px rgba(8,145,178,1), 0 0 16px rgba(8,145,178,0.6);
+}
+
+/* ── User menu ── */
+body.theme-brutalist .user-avatar-btn {
+  background: #0891B2;
+  border: 2px solid #0C1E2A;
+  border-radius: 2px;
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.4);
+}
+body.theme-brutalist .user-avatar-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+}
+/* Mobile nav: JD + history match PASTE's flat chrome (the desktop
+   .user-avatar-btn cube treatment above otherwise wins at this
+   specificity and gives mobile JD a thick border + drop-shadow that
+   doesn't fit the small button context). Chat button stays icon-only —
+   kill the .nav-icon-btn brutalist border that would otherwise show
+   through its now-transparent background. */
+body.theme-brutalist .nw-profile-btn-m,
+body.theme-brutalist .nw-history-btn-m {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 5px;
+  box-shadow: none;
+}
+body.theme-brutalist .nw-profile-btn-m:hover,
+body.theme-brutalist .nw-history-btn-m:hover {
+  transform: none;
+  box-shadow: none;
+  background: rgba(255,255,255,0.2);
+  border-color: rgba(255,255,255,0.4);
+}
+body.theme-brutalist .nav-chat-btn-m {
+  /* `background:` shorthand would reset background-image set in
+     dashboard.css — only kill the border/shadow that `.nav-icon-btn`
+     adds in this theme. */
+  border: none;
+  box-shadow: none;
+}
+/* (Chat hover handled in dashboard.css — the `:not(.nav-chat-btn-m)`
+   exclusion on both base + brutalist `.nav-icon-btn:hover` rules means
+   no theme-specific hover override is needed here.) */
+/* JD text color on mobile: match PASTE's rgba(255,255,255,0.75) so all
+   four top-right buttons read as one cohesive set. The global brutalist
+   .user-avatar-initials rule above forces #FFFFFF which is too stark
+   next to PASTE's softer grey. */
+body.theme-brutalist .nw-profile-btn-m .user-avatar-initials {
+  color: rgba(255,255,255,0.75);
+}
+body.theme-brutalist .user-avatar-initials {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 900;
+  color: #FFFFFF;
+}
+body.theme-brutalist .user-dropdown {
+  border: 2px solid rgba(12,30,42,0.35);
+  border-radius: 4px;
+  box-shadow: 4px 4px 0 rgba(12,30,42,0.2);
+}
+body.theme-brutalist .user-dropdown-item {
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  border-radius: 2px;
+}
+
+/* ── Now Watching Bar ── */
+body.theme-brutalist .now-watching-bar {
+  background: #1B323A;
+  border-bottom: none;
+  z-index: 10001;
+  overflow: visible;
+  margin-right: 330px;
+}
+body.theme-brutalist .nw-meta { display: inline; }
+body:not(.theme-brutalist) .nw-right .theme-switcher { display: flex; }
+body.theme-brutalist .nw-label {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 900;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 2px solid #DC2626 !important;
+  border-radius: 2px;
+  background: rgba(220,38,38,0.15) !important;
+  color: #DC2626 !important;
+}
+body.theme-brutalist .nw-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+}
+
+/* ── Mech panel — brutalist override: solid, no glow ── */
+body.theme-brutalist .mech-neon-line { opacity: 0; }
+body.theme-brutalist .mech-strip-btn {
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 2px;
+}
+body.theme-brutalist .mech-strip-btn:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.18);
+}
+body.theme-brutalist .mech-strip-btn svg { filter: none; }
+/* Brutalist preservation: flat aesthetic (no glow/transform) + signature
+   yellow play button. Other themes get their primary --accent via the
+   generic rule; brutalist overrides back to --highlight-warm (#FFD100). */
+body.theme-brutalist .mech-play-btn {
+  background: color-mix(in srgb, var(--highlight-warm) 18%, transparent) !important;
+  color: var(--highlight-warm);
+  box-shadow: none;
+}
+body.theme-brutalist .mech-play-btn svg,
+body.theme-brutalist .mech-play-btn svg path { fill: var(--highlight-warm); }
+body.theme-brutalist .mech-play-btn svg { filter: none; }
+body.theme-brutalist .mech-play-btn:hover {
+  transform: none;
+  box-shadow: none;
+}
+body.theme-brutalist .mech-play-btn:hover svg { filter: none; }
+
+/* Brutalist preservation: yellow scrubber fill + current-time (signature
+   look). Flat — no glow, matching the brutalist aesthetic. Other themes
+   keep the generic glow via --accent. */
+body.theme-brutalist .scrubber-fill {
+  background: var(--highlight-warm);
+  box-shadow: none;
+}
+body.theme-brutalist #scrubberCurrent {
+  color: var(--highlight-warm);
+  text-shadow: none;
+}
+body.theme-brutalist .scrubber-vol-fill {
+  background: var(--highlight-warm);
+  box-shadow: none;
+}
+/* .mech-cc-label color lives in home.css + the generic .mech-cc-label rule
+   below, both routed through var(--highlight-warm). The old brutalist color
+   override (#FFD100) is now redundant — brutalist's --highlight-warm is
+   #FFD100 so the outcome is identical. */
+body.theme-brutalist .nw-meta { display: none; }
+body.theme-brutalist .mech-status-dot { background: #FF3B3B; box-shadow: 0 0 5px rgba(255,59,59,0.5); }
+body.theme-brutalist .mech-status-label {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #FF3B3B;
+}
+/* .mech-time font/weight now come from --font-body + --heading-weight in
+   the generic rule (home.css). Brutalist sets those tokens to Space Grotesk
+   / 700 in themes.js, so the outcome matches. This override deleted. */
+/* CC label framing + .on glow — routed through --accent so every theme's
+   primary colour drives the CC look, matching play-btn / scrubber fill /
+   current-time. Brutalist preserves its yellow via the override below. */
+.mech-cc-label {
+  font-family: var(--font-body);
+  font-weight: var(--heading-weight);
+  border: 1.5px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+}
+#mechCcBtn.on {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow:
+    0 0 14px color-mix(in srgb, var(--accent) 50%, transparent),
+    0 0 30px color-mix(in srgb, var(--accent) 25%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+#mechCcBtn.on .mech-cc-label {
+  text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+/* Brutalist preservation: CC stays yellow (#FFD100 via --highlight-warm). */
+body.theme-brutalist .mech-cc-label {
+  color: var(--highlight-warm);
+  border-color: color-mix(in srgb, var(--highlight-warm) 40%, transparent);
+}
+body.theme-brutalist #mechCcBtn.on {
+  background: color-mix(in srgb, var(--highlight-warm) 12%, transparent);
+  box-shadow:
+    0 0 14px color-mix(in srgb, var(--highlight-warm) 50%, transparent),
+    0 0 30px color-mix(in srgb, var(--highlight-warm) 25%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--highlight-warm) 10%, transparent);
+}
+body.theme-brutalist #mechCcBtn.on .mech-cc-label {
+  text-shadow: 0 0 6px color-mix(in srgb, var(--highlight-warm) 60%, transparent);
+}
+
+/* ── Toast ── */
+body.theme-brutalist .toast {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  border: 2px solid rgba(12,30,42,0.35);
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 rgba(12,30,42,0.2);
+  background: #FFD100;
+  color: #0C1E2A;
+}
+
+/* ── Dashboard grid + resize ── */
+body.theme-brutalist .resize-handle {
+  background: #0C1E2A;
+}
+body.theme-brutalist .resize-handle::before {
+  background: #0891B2;
+  width: 3px;
+}
+body.theme-brutalist .resize-handle:hover,
+body.theme-brutalist .resize-handle.dragging {
+  background: #0891B2;
+}
+/* Chat panel is fixed in brutalist — collapse its grid column */
+body.theme-brutalist .dashboard {
+  grid-template-columns: 320px 6px 1fr;
+  margin-right: 330px;
+}
+body.theme-brutalist .rtl-layout .dashboard {
+  margin-right: 0; margin-left: 330px;
+}
+body.theme-brutalist .rtl-layout nav {
+  margin-right: 0; margin-left: 330px;
+}
+body.theme-brutalist .rtl-layout .now-watching-bar {
+  margin-right: 0; margin-left: 330px;
+}
+body.theme-brutalist #resizeHandle {
+  position: fixed;
+  right: 330px;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 10003;
+}
+body.theme-brutalist .rtl-layout #resizeHandle {
+  right: auto; left: 330px;
+}
+
+/* ── Resize-handle morph staging (brutalist desktop only) ──
+   In brutalist, #resizeHandle is position:fixed + z-index 10003 — pinned to
+   the viewport, above almost everything. By spec it should still be hidden
+   while resultsView has .hidden (display:none cascades to fixed children),
+   but in practice the cyan handle bleeds through during the loading phase
+   and reads as "the chat border appeared 2s before the landing exits."
+   We pin its visibility explicitly to the morph lifecycle:
+     • Before processing (no .results-visible on body): opacity 0
+     • During the morph (body.morphing): opacity 0 — chat-panel slides in
+       from the right with its own border, so the handle stays out of the
+       way until the morph fully settles.
+     • After morph cleanup (body.morphing removed at maxEnterEnd+100ms,
+       see _runStaggeredMorph step 7): fades to 1 over 300ms.
+   pointer-events:none during the hidden phase prevents the invisible bar
+   from intercepting clicks on the landing page or mid-morph. Mobile is
+   unaffected — handles are display:none under 900px (line 3247 above and
+   line 1522). #leftResizeHandle is included for symmetry — it isn't fixed
+   in brutalist but the same staging rule keeps both handles in lockstep. */
+body.theme-brutalist:not(.results-visible) #resizeHandle,
+body.theme-brutalist:not(.results-visible) #leftResizeHandle,
+body.theme-brutalist.morphing #resizeHandle,
+body.theme-brutalist.morphing #leftResizeHandle {
+  opacity: 0;
+  pointer-events: none;
+}
+body.theme-brutalist #resizeHandle,
+body.theme-brutalist #leftResizeHandle {
+  transition: opacity 300ms ease-out;
+}
+@media (max-width: 900px) {
+  body.theme-brutalist .dashboard {
+    grid-template-columns: unset !important;
+    margin-right: 0 !important;
+  }
+  body.theme-brutalist nav,
+  body.theme-brutalist .now-watching-bar {
+    margin-right: 0 !important;
+  }
+  body.theme-brutalist .chat-panel {
+    position: static !important;
+    width: 100% !important;
+  }
+  body.theme-brutalist #resizeHandle {
+    display: none !important;
+  }
+}
+
+/* ── Left Panel ── */
+body.theme-brutalist .left-panel {
+  border-right: 2px solid #0C1E2A;
+  background: #FFFFFF;
+}
+body.theme-brutalist .video-block {
+  border-bottom: none;
+}
+body.theme-brutalist .video-embed {
+  background: #1B323A;
+  border: 2px solid #0C1E2A;
+  border-radius: 0;
+  box-shadow: 0 4px 0 rgba(12,30,42,0.2);
+  margin: 0;
+}
+body.theme-brutalist .video-controls {
+  background: #F5F0E8;
+  border-top: 2px solid rgba(12,30,42,0.35);
+}
+/* Brutalist-scoped .vc-* + .scrubber-vol-fill + .vc-cc + .vc-time overrides
+   deleted — every attribute they set is now driven by design tokens:
+     - fonts via --font-body + --heading-weight
+     - radii via --radius-sm
+     - borders via --border-width + --text-primary
+     - hover/play accent via --highlight-pop (brutalist = #EE5E48 coral)
+     - time colour via --text-primary (dark on brutalist, light on dark themes)
+   The generic rules above produce identical output on brutalist because
+   its theme.vars in themes.js pin each token to the original brutalist value. */
+
+/* First brutalist scrubber block DELETED — every rule it defined was
+   re-set by the "Brutalist Video Scrubber" block further down (lines
+   ~3200+), which wins the cascade. The two blocks had conflicting values
+   (first used cream + coral, second uses dark navy + yellow) and the
+   second was the one actually rendering. */
+body.theme-brutalist .scrubber-yt-wordmark {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Channel badge */
+body.theme-brutalist .yt-wordmark,
+body.theme-brutalist .yt-wordmark span { color: #FF2D78 !important; }
+body.theme-brutalist .scrubber-yt-wordmark:hover .yt-wordmark,
+body.theme-brutalist .scrubber-yt-wordmark:hover .yt-wordmark span { color: #FF5A9E !important; text-shadow: none !important; }
+body.theme-brutalist .channel-badge {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  border: 2px solid #0C1E2A;
+  border-radius: 4px;
+  box-shadow: 2px 2px 0 rgba(12,30,42,0.2);
+  background: #FF0000;
+  color: #FFFFFF;
+}
+
+/* Video meta */
+body.theme-brutalist .video-meta {
+  background: #EFF9FB;
+  border-bottom: none;
+  padding: 14px 12px 12px;
+}
+/* Brutalist title rules moved to title.css */
+body.theme-brutalist .vtag {
+  /* font-family from theme-level --font-content-body redefinition. */
+  font-weight: 700;
+  border: 1.5px solid #E0D9CC;
+  border-radius: 4px;
+  box-shadow: none;
+  background: #F5F0E8;
+  color: #2A5A70;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+  padding: 2px 8px;
+}
+body.theme-brutalist .vtag.channel {
+  background: #FF0000;
+  color: #FFFFFF;
+  border-color: #0C1E2A;
+}
+
+/* ── Brutalist Video Embed — no padding/bezel ── */
+body.theme-brutalist .video-embed {
+  padding: 0 !important;
+  border: none !important;
+}
+
+/* ── Brutalist Video Scrubber ── */
+body.theme-brutalist .video-scrubber {
+  background: #0C1E2A;
+  padding: 7px 10px;
+  gap: 7px;
+}
+
+/* Time digits — brutalist-specific size/letter-spacing/min-width only. */
+body.theme-brutalist .scrubber-time {
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  min-width: 5ch;
+}
+
+/* Brutalist time colour preservation — all elapsed/current/total readouts
+   use --highlight-warm (yellow) to match the brutalist signature, unified
+   across middle controller + scrubber. Totals keep the 50% opacity fade
+   from the generic rules. */
+body.theme-brutalist .scrubber-time,
+body.theme-brutalist #scrubberCurrent,
+body.theme-brutalist .mech-time-current {
+  color: var(--highlight-warm);
+}
+body.theme-brutalist #scrubberCurrent {
+  text-shadow: none;
+}
+body.theme-brutalist .mech-time-current {
+  text-shadow: none;
+}
+body.theme-brutalist .mech-time-total,
+body.theme-brutalist .mech-time-sep {
+  color: var(--highlight-warm);
+}
+
+/* Progress track — brutalist-specific structural bits: thicker height,
+   hard-edged with explicit border. Track bg handled by generic rule;
+   .scrubber-fill box-shadow already overridden above. */
+body.theme-brutalist .scrubber-track {
+  height: 5px;
+  border: 1px solid #1E3448;
+}
+
+/* YouTube wordmark → red brutalist badge */
+body.theme-brutalist .yt-wordmark {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #FF3B3B;
+  background: rgba(255,59,59,0.1);
+  border: 1.5px solid rgba(255,59,59,0.35);
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+body.theme-brutalist .yt-wordmark span { color: #FF2D78; }
+body.theme-brutalist .scrubber-yt-wordmark:hover .yt-wordmark,
+body.theme-brutalist .scrubber-yt-wordmark:hover .yt-wordmark span {
+  background: #FF2D78;
+  color: #fff;
+  text-shadow: none;
+}
+
+/* Icon buttons — square, pop yellow on hover */
+body.theme-brutalist .scrubber-btn {
+  background: transparent;
+  border: 1.5px solid #2A5A70;
+  border-radius: 0;
+  color: #5ABCD4;
+  box-shadow: none;
+}
+body.theme-brutalist .scrubber-btn:hover {
+  background: #FFD100;
+  color: #0C1E2A;
+  border-color: #FFD100;
+  box-shadow: 2px 2px 0 rgba(255,209,0,0.25);
+}
+body.theme-brutalist .scrubber-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+/* Volume — brutalist-specific track bg darker than the scrubber track.
+   .scrubber-vol-fill box-shadow already removed above (with colour override). */
+body.theme-brutalist .scrubber-vol-track { background: #0E2030; }
+body.theme-brutalist .scrubber-vol-slider {
+  border: 1px solid #1E3448;
+  background: #0C1E2A;
+  border-radius: 0;
+}
+
+/* ── Chapters (brutalist) moved to chapters.css ── */
+body.theme-brutalist .section-label {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 900;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+
+/* ── Center Panel ── */
+body.theme-brutalist .center-panel {
+  border-right: 2px solid #0C1E2A;
+  background: #F5F0E8;
+}
+
+/* Tab bar */
+body.theme-brutalist .tab-bar {
+  background: #FFFFFF;
+  border-bottom: 1px solid #0C1E2A;
+  position: relative;
+  z-index: 1;
+}
+body.theme-brutalist .tab-btn {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 500;
+  font-size: 7.5px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border: 1.5px solid transparent;
+  transition: color 0.1s, background 0.1s;
+  color: #0C1E2A;
+}
+body.theme-brutalist .tab-btn:hover {
+  color: #0C1E2A;
+  background: #F5F0E8;
+}
+body.theme-brutalist .tab-badge {
+  background: #EE5E48 !important;
+  color: #FFFFFF !important;
+  border-radius: 3px !important;
+}
+body.theme-brutalist .tab-btn.active {
+  color: #0C1E2A;
+  font-weight: 500;
+  background: #FFD100;
+  border: 1.5px solid transparent;
+  box-shadow: none;
+  margin-bottom: 0;
+  position: relative;
+  z-index: 1;
+}
+body.theme-brutalist .tab-action-btn {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  border: 2px solid #0C1E2A;
+  border-radius: 2px;
+  box-shadow: none;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+body.theme-brutalist .tab-action-btn.tab-btn-bookmarks { border: none; }
+body.theme-brutalist .tab-action-btn:hover {
+  background: #0C1E2A;
+  color: #FFFFFF;
+  border-color: #0C1E2A;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Brutalist summary/context rules moved to summary.css */
+
+/* ── Transcript ── */
+/* Brutalist transcript/search/toggle rules moved to transcript.css */
+body.theme-brutalist .mobile-chat-fab {
+  border: 2px solid #0C1E2A;
+  border-radius: 4px;
+  background: #1B323A;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(238,94,72,0.6), 0 0 24px rgba(238,94,72,0.3), 2px 2px 0 rgba(12,30,42,0.2);
+}
+/* Brutalist scroll-top/highlight hover moved to transcript.css */
+body.theme-brutalist .mobile-chat-fab:hover {
+  background: #0C1E2A;
+  color: #EE5E48;
+  transform: none;
+  box-shadow: 2px 2px 0 rgba(12,30,42,0.2);
+}
+
+/* ── Chat Panel — unified dark column ── */
+body.theme-brutalist .chat-panel {
+  background: #060D14;
+  border: none;
+  border-left: 1px solid #153040;
+  box-shadow: none;
+  position: fixed !important;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 330px;
+  z-index: 10002;
+}
+/* RTL: mirror chat panel to far left */
+body.theme-brutalist .rtl-layout .chat-panel {
+  right: auto; left: 0;
+  border-left: none; border-right: 1px solid #153040;
+}
+
+body.theme-brutalist .chat-header {
+  background: #0A1520;
+  border-bottom: 1px solid #153040;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+}
+body.theme-brutalist .chat-title {
+  font-family: 'Bebas Neue', sans-serif !important;
+  font-weight: 400 !important;
+  font-size: 22px !important;
+  letter-spacing: 2px !important;
+  text-transform: uppercase !important;
+  color: #88d5db !important;
+  line-height: 1 !important;
+  display: block !important;
+}
+body.theme-brutalist .chat-title::before { display: none !important; }
+body.theme-brutalist .chat-online {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: #06B6D4;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+}
+body.theme-brutalist .chat-online::before {
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: #06B6D4;
+  border-radius: 50%;
+}
+
+/* Empty state */
+body.theme-brutalist .chat-empty-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 400;
+  font-size: 11px;
+  color: rgba(255,255,255,0.18);
+  letter-spacing: 2px;
+}
+body.theme-brutalist #chatEmptyState.chat-empty-state { opacity: 1; }
+body.theme-brutalist .chat-empty-icon { opacity: 0.18; }
+
+/* ── Messages — terminal rows ── */
+body.theme-brutalist .chat-messages {
+  background: transparent;
+  padding: 10px 14px;
+  gap: 4px;
+  counter-reset: none;
+}
+body.theme-brutalist .chat-bubble {
+  /* font-family from theme-level --font-content-chat redefinition
+     (JetBrains Mono with i18n fallback). */
+  border-radius: 0 !important;
+  max-width: 100% !important;
+  width: 100%;
+  align-self: stretch !important;
+  padding: 6px 0 6px 18px !important;
+  border: none !important;
+  box-shadow: none !important;
+  position: relative;
+  font-size: 12.5px;
+  line-height: 1.6;
+  background: transparent;
+  border-left: 2px solid transparent !important;
+}
+body.theme-brutalist .chat-bubble::before { display: none; }
+body.theme-brutalist .bubble-label {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 9px !important;
+  font-weight: 400 !important;
+  letter-spacing: 2px !important;
+  text-transform: uppercase !important;
+  margin-bottom: 4px;
+}
+body.theme-brutalist .bubble-label::before { content: none; display: none; }
+
+body.theme-brutalist .bubble-ai {
+  background: rgba(6,13,20, 0.54);
+  color: #5ABCD4;
+  border-left-color: #06B6D4 !important;
+}
+/* Lighter entity colors inside brutalist chat (dark bg + cyan body text).
+   The default tx-* palette is tuned for light backgrounds — purples,
+   indigos, and deep blues turn into low-contrast smudges on the dark
+   chat-bubble bg and on dark chip surfaces. These overrides swap each
+   entity color for a lighter Tailwind-300/400 equivalent so they read
+   cleanly against the brutalist dark theme. Scoped to .chat-bubble and
+   .chat-chip so the rest of the app keeps the standard transcript
+   palette. */
+/* Chat-bubble entity colors are bg-dependent — each bubble flavor uses
+   a different background so its tx-* palette has to match. Three
+   contexts:
+     - Brutalist DESKTOP .chat-bubble (.bubble-ai + .bubble-user both):
+       DARK navy bg → LIGHT entity colors.
+     - Brutalist MOBILE .bubble-ai: switches to a CREAM/light bg (despite
+       the global theme rule) → falls into the universal mobile rule
+       below using DARK entity colors.
+     - Brutalist .bubble-user (any viewport) stays DARK navy → must use
+       LIGHT entity colors regardless of viewport. The mobile rule below
+       would otherwise paint dark-on-dark; the .bubble-user rules at the
+       bottom !important-override the mobile rule for that specific case. */
+/* Unified desktop-brutalist chat palette (AI bubble + user bubble + chips
+   all sit on dark navy with cyan or gold body text). Each entity type
+   gets a vibrant Tailwind 400 hue chosen for:
+     1. Distinctness — every type reads as a clearly different color, no
+        two-of-the-same-family confusion (the previous pastels mixed multiple
+        violets/indigos/blues that read as "vaguely blue blob").
+     2. Pop on dark navy — saturated 400-level brightness, not washed-out
+        pastels.
+     3. Body-text contrast — none of these match the cyan AI body
+        (#5ABCD4) or the gold user/chip body (#FFE680) closely enough to
+        blend in.
+   Same palette is reused for the .bubble-user !important block and the
+   chat-chip override block below so all three contexts feel like one
+   design system. Tailwind names in comments for quick reference. */
+/* Brutalist-desktop entity color tokens. ONE source of truth driving the
+   AI bubble + user bubble + chip palettes below. Override these vars at
+   runtime (the dev palette switcher does this) to retheme all three
+   contexts at once without touching the rule blocks. */
+body.theme-brutalist {
+  /* Coral Sunset palette — chosen 2026-04-30. Warm coral / peach / salmon
+     family with one cool mint slot (--c-emphasis) so generic **bold**
+     highlights pop against the otherwise-warm field. */
+  --c-name:      #FB923C;  /* orange-400 */
+  --c-org:       #FDBA74;  /* orange-300 */
+  --c-gpe:       #FED7AA;  /* orange-200 */
+  --c-event:     #FB923C;
+  --c-date:      #FCA5A5;  /* red-300 (salmon) */
+  --c-num:       #FDBA74;
+  --c-discourse: #FB923C;
+  --c-exclaim:   #FCA5A5;
+  --c-punct:     #FED7AA;
+  --c-stretch:   #FB923C;
+  --c-bracket:   #FDBA74;
+  --c-emphasis:  #86EFAC;  /* mint — cool counterpoint, sets emphasis apart */
+}
+@media (min-width: 901px) {
+  body.theme-brutalist .chat-bubble .tx-name      { color: var(--c-name); }
+  body.theme-brutalist .chat-bubble .tx-org       { color: var(--c-org); }
+  body.theme-brutalist .chat-bubble .tx-gpe       { color: var(--c-gpe); }
+  body.theme-brutalist .chat-bubble .tx-event     { color: var(--c-event); }
+  body.theme-brutalist .chat-bubble .tx-date      { color: var(--c-date); }
+  body.theme-brutalist .chat-bubble .tx-num       { color: var(--c-num); }
+  body.theme-brutalist .chat-bubble .tx-discourse { color: var(--c-discourse); }
+  body.theme-brutalist .chat-bubble .tx-exclaim   { color: var(--c-exclaim); }
+  body.theme-brutalist .chat-bubble .tx-punct     { color: var(--c-punct); }
+  body.theme-brutalist .chat-bubble .tx-stretch   { color: var(--c-stretch); }
+  body.theme-brutalist .chat-bubble .tx-bracket   { color: var(--c-bracket); }
+
+  /* LLM-marked highlights (**bold** / [[name]] / ((place)) / %%date%%).
+     -name / -place / -date share their NER counterpart's color because
+     they're semantically the same thing (a person name is a person name
+     regardless of pipeline). Generic **bold** is its OWN category — a
+     "key concept emphasis" — so it gets its own --c-emphasis slot. */
+  body.theme-brutalist .chat-bubble .summary-highlight       { color: var(--c-emphasis); }
+  body.theme-brutalist .chat-bubble .summary-highlight-name  { color: var(--c-name); }
+  body.theme-brutalist .chat-bubble .summary-highlight-place { color: var(--c-gpe); }
+  body.theme-brutalist .chat-bubble .summary-highlight-date  { color: var(--c-date); }
+}
+
+/* MOBILE .chat-bubble (any theme) — light cream bg requires DARKER
+   entity colors. Default tx-* palette is tuned for the white transcript
+   background at desktop sizes; on cream-tinted small screens it reads
+   a touch washed-out, so each color drops a step or two deeper. */
+@media (max-width: 900px) {
+  .chat-bubble .tx-name      { color: #5B21B6 !important; }  /* violet-800 */
+  .chat-bubble .tx-org       { color: #1E3A8A !important; }  /* blue-900 */
+  .chat-bubble .tx-gpe       { color: #155E75 !important; }  /* cyan-800 */
+  .chat-bubble .tx-event     { color: #312E81 !important; }  /* indigo-900 */
+  .chat-bubble .tx-date      { color: #9A3412 !important; }  /* orange-800 */
+  .chat-bubble .tx-num       { color: #166534 !important; }  /* green-800 */
+  .chat-bubble .tx-discourse { color: #0369A1 !important; }  /* sky-700 */
+  .chat-bubble .tx-exclaim   { color: #B91C1C !important; }  /* red-700 */
+  .chat-bubble .tx-punct     { color: #854D0E !important; }  /* amber-800 */
+}
+
+/* CHIPS — always light cream bg across all themes + viewports, so always
+   use the DARK palette. Pulled out of the viewport-scoped blocks above
+   so the colors stay consistent on desktop brutalist (where bubble bg
+   is dark, but chip bg is still cream). */
+.chat-chip .tx-name      { color: #5B21B6 !important; }  /* violet-800 */
+.chat-chip .tx-org       { color: #1E3A8A !important; }  /* blue-900 */
+.chat-chip .tx-gpe       { color: #155E75 !important; }  /* cyan-800 */
+.chat-chip .tx-event     { color: #312E81 !important; }  /* indigo-900 */
+.chat-chip .tx-date      { color: #9A3412 !important; }  /* orange-800 */
+.chat-chip .tx-num       { color: #166534 !important; }  /* green-800 */
+.chat-chip .tx-discourse { color: #0369A1 !important; }  /* sky-700 */
+.chat-chip .tx-exclaim   { color: #B91C1C !important; }  /* red-700 */
+.chat-chip .tx-punct     { color: #854D0E !important; }  /* amber-800 */
+.chat-chip .tx-stretch   { color: #9D174D !important; }  /* pink-800 */
+.chat-chip .tx-bracket   { color: #4D5340 !important; }  /* dark sage */
+
+/* Desktop brutalist chip override — chip bg is dark navy with a faint
+   yellow tint (rgba(255,209,0,0.05)), NOT cream like other contexts.
+   The dark Tailwind 800 palette above renders as unreadable dark-on-dark
+   here — names/orgs/places all blur into the bg. Force the same vibrant
+   11-color palette the AI + user bubbles use on this surface, so the
+   three contexts (AI, user, chip) share one design language. */
+@media (min-width: 901px) {
+  body.theme-brutalist .chat-chip .tx-name      { color: var(--c-name) !important; }
+  body.theme-brutalist .chat-chip .tx-org       { color: var(--c-org) !important; }
+  body.theme-brutalist .chat-chip .tx-gpe       { color: var(--c-gpe) !important; }
+  body.theme-brutalist .chat-chip .tx-event     { color: var(--c-event) !important; }
+  body.theme-brutalist .chat-chip .tx-date      { color: var(--c-date) !important; }
+  body.theme-brutalist .chat-chip .tx-num       { color: var(--c-num) !important; }
+  body.theme-brutalist .chat-chip .tx-discourse { color: var(--c-discourse) !important; }
+  body.theme-brutalist .chat-chip .tx-exclaim   { color: var(--c-exclaim) !important; }
+  body.theme-brutalist .chat-chip .tx-punct     { color: var(--c-punct) !important; }
+  body.theme-brutalist .chat-chip .tx-stretch   { color: var(--c-stretch) !important; }
+  body.theme-brutalist .chat-chip .tx-bracket   { color: var(--c-bracket) !important; }
+}
+
+/* BRUTALIST .bubble-user entity colors — DESKTOP. Mobile has its own
+   warmer override inside .mobile-chat-overlay further down (the mobile
+   user bubble is on a tan bg, not dark navy, so it gets warm pastels).
+   On DESKTOP the user bubble shares the same dark navy bg as the AI
+   bubble, so it gets the same vibrant 11-color palette as the AI
+   bubble (see the @media block above). One unified design language
+   across both bubbles + the chips below. !important needed because the
+   @media chat-bubble rule above doesn't have it — and at equal
+   specificity the source-order winner is already covered by the @media
+   rule for AI bubbles, so we !important the user-side variant to win
+   even when later non-!important rules try to override. */
+body.theme-brutalist .bubble-user .tx-name      { color: var(--c-name) !important; }
+body.theme-brutalist .bubble-user .tx-org       { color: var(--c-org) !important; }
+body.theme-brutalist .bubble-user .tx-gpe       { color: var(--c-gpe) !important; }
+body.theme-brutalist .bubble-user .tx-event     { color: var(--c-event) !important; }
+body.theme-brutalist .bubble-user .tx-date      { color: var(--c-date) !important; }
+body.theme-brutalist .bubble-user .tx-num       { color: var(--c-num) !important; }
+body.theme-brutalist .bubble-user .tx-discourse { color: var(--c-discourse) !important; }
+body.theme-brutalist .bubble-user .tx-exclaim   { color: var(--c-exclaim) !important; }
+body.theme-brutalist .bubble-user .tx-punct     { color: var(--c-punct) !important; }
+body.theme-brutalist .bubble-user .tx-stretch   { color: var(--c-stretch) !important; }
+body.theme-brutalist .bubble-user .tx-bracket   { color: var(--c-bracket) !important; }
+body.theme-brutalist .bubble-ai .bubble-label { color: #6F8AA0 !important; }
+body.theme-brutalist .typing-dots span { background: #5ABCD4 !important; }
+body.theme-brutalist .bubble-ai .bubble-label .label-shark,
+body.theme-brutalist .bubble-ai .bubble-label img {
+  height: 14px !important;
+  width: auto !important;
+  vertical-align: -2px;
+  margin-right: 4px;
+}
+body.theme-brutalist .bubble-user {
+  background: rgba(6,13,20, 0.54);
+  color: #FFE680;
+  font-weight: 400 !important;
+  border-left-color: #FFD100 !important;
+}
+body.theme-brutalist .bubble-user .bubble-label { color: #666011 !important; text-align: left !important; }
+
+/* RTL chat bubbles — flip border + padding to right side. Desktop-only:
+   mobile chat uses its own bubble styling (.mobile-chat-overlay rules below,
+   light pill on accent fill, no colored side line) and does not want the
+   brutalist desktop border treatment leaking through on the translated-
+   language path. The general direction/text-align for RTL is already set by
+   the non-brutalist rule at body[data-translate-lang="..."] .chat-bubble
+   higher up, so mobile RTL still flows the right way without this block.
+   :not(.gb-display) excludes the greeting bubble — its lang/dir is per-display
+   (see .gb-display.lang-fa / .gb-display.rtl rules added near .gb-host).
+   Two selector groups: #resultsView.rtl covers RTL VIDEO lang (desktop chat
+   lives inside #resultsView). body[data-translate-lang="..."] covers RTL
+   TRANSLATION target. */
+@media (min-width: 901px) {
+  body.theme-brutalist #resultsView.rtl .chat-bubble:not(.gb-display),
+  body.theme-brutalist[data-translate-lang="fa"] .chat-bubble:not(.gb-display),
+  body.theme-brutalist[data-translate-lang="ar"] .chat-bubble:not(.gb-display),
+  body.theme-brutalist[data-translate-lang="he"] .chat-bubble:not(.gb-display),
+  body.theme-brutalist[data-translate-lang="ur"] .chat-bubble:not(.gb-display) {
+    border-left: none !important;
+    border-right: 2px solid transparent !important;
+    padding: 6px 18px 6px 0 !important;
+    direction: rtl;
+    text-align: right;
+  }
+  body.theme-brutalist #resultsView.rtl .bubble-ai:not(.gb-display),
+  body.theme-brutalist[data-translate-lang="fa"] .bubble-ai:not(.gb-display),
+  body.theme-brutalist[data-translate-lang="ar"] .bubble-ai:not(.gb-display),
+  body.theme-brutalist[data-translate-lang="he"] .bubble-ai:not(.gb-display),
+  body.theme-brutalist[data-translate-lang="ur"] .bubble-ai:not(.gb-display) {
+    border-right-color: #06B6D4 !important;
+  }
+  /* `:not(.gb-display)` matches the AI rule's specificity (0,4,1) — without it
+     the catch-all `.chat-bubble:not(.gb-display) { border-right: 2px solid
+     transparent !important }` rule above wins on specificity and the yellow
+     never lands. */
+  body.theme-brutalist #resultsView.rtl .bubble-user:not(.gb-display),
+  body.theme-brutalist[data-translate-lang="fa"] .bubble-user:not(.gb-display),
+  body.theme-brutalist[data-translate-lang="ar"] .bubble-user:not(.gb-display),
+  body.theme-brutalist[data-translate-lang="he"] .bubble-user:not(.gb-display),
+  body.theme-brutalist[data-translate-lang="ur"] .bubble-user:not(.gb-display) {
+    border-right-color: #FFD100 !important;
+  }
+  body.theme-brutalist #resultsView.rtl .bubble-user .bubble-label,
+  body.theme-brutalist[data-translate-lang="fa"] .bubble-user .bubble-label,
+  body.theme-brutalist[data-translate-lang="ar"] .bubble-user .bubble-label,
+  body.theme-brutalist[data-translate-lang="he"] .bubble-user .bubble-label,
+  body.theme-brutalist[data-translate-lang="ur"] .bubble-user .bubble-label {
+    text-align: right !important;
+  }
+}
+
+/* Language-specific fonts for chat (override JetBrains Mono).
+   :not(.gb-display) excludes greeting bubble — see per-display rules instead.
+   Same dual-scoping rationale as the RTL block above: #resultsView.lang-* is
+   for VIDEO lang on desktop; body[data-translate-lang] is for TRANSLATION
+   target and also works on mobile (where the chat panel is moved out of
+   #resultsView). */
+/* Per-bubble lang class drives font in brutalist too (mirror the global
+   chat-bubble rules near line 3227). The body[data-translate-lang]/#resultsView.
+   lang-X versions used to leak the current document language onto every
+   bubble — broke when the user mixed languages inside a single chat session.
+   Specificity is 0,4,1 to beat the upstream non-brutalist .chat-bubble.lang-X
+   rule (0,3,0) on the brutalist theme. */
+/* Brutalist non-Latin chat-bubble line-height. Font face from cascade +
+   script disambiguation rules at the bottom of dashboard.css. */
+body.theme-brutalist .chat-bubble.lang-fa:not(.gb-display),
+body.theme-brutalist .chat-bubble.lang-ar:not(.gb-display),
+body.theme-brutalist .chat-bubble.lang-he:not(.gb-display) {
+  line-height: 1.75;
+}
+
+/* ── Suggested-question chips on brutalist DESKTOP — terminal-styled
+   ghost buttons. Mobile keeps the soft pill look (see global .chat-chip)
+   so this override is scoped to desktop only via @media. The rounded
+   white pills clash with brutalist's dark-terminal chat panel; this
+   recipe matches the existing brutalist vocabulary (sharp 2px corners,
+   mono-adjacent font, signature offset shadow that grows on hover and
+   sinks on click). Color: gold (#FFD100 / #FFE680) — these chips are
+   pre-fills FROM the user, so they read as user-side elements (matching
+   .bubble-user's gold border-left, not the AI bubble's blue). */
+@media (min-width: 901px) {
+  body.theme-brutalist .chat-chip {
+    background: rgba(255, 209, 0, 0.05) !important;
+    color: #FFE680 !important;
+    border: 1.5px solid rgba(255, 209, 0, 0.4) !important;
+    border-radius: 2px !important;
+    /* Keeps Space Grotesk for the brutalist desktop chip but extends
+       the fallback to var(--font-i18n) so non-Latin chip text (Persian,
+       Arabic, CJK, etc.) cascades to the right script font. */
+    font-family: 'Space Grotesk', var(--font-i18n) !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em !important;
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35) !important;
+    transition: none !important;
+  }
+  body.theme-brutalist .chat-chip:hover {
+    background: #FFD100 !important;
+    color: #0A1520 !important;
+    border-color: #FFD100 !important;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.4) !important;
+  }
+  body.theme-brutalist .chat-chip:active {
+    transform: translate(2px, 2px) !important;
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0.35) !important;
+  }
+}
+
+/* Timestamp chips — inline with the blue text, like a clickable code span */
+body.theme-brutalist .chat-ts {
+  font-family: 'JetBrains Mono', var(--font-i18n);
+  font-size: 10.5px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+  color: #C8D6E0;
+  /* Solid border driven by --c-num at 50% alpha — full opacity reads too
+     bright; half-transparent gives the chip a clear edge without
+     drowning out the surrounding text. Desktop brutalist only; mobile
+     timestamp chip styling is handled separately. */
+  border: 1px solid color-mix(in srgb, var(--c-num) 40%, transparent);
+  border-radius: 2px;
+  padding: 2px 7px 2px 5px;
+  box-shadow: none;
+  text-decoration: none;
+}
+body.theme-brutalist .chat-ts:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #FFFFFF;
+}
+
+/* ── Input area ── */
+body.theme-brutalist .chat-input-area {
+  background: #0A1520;
+  border-top: 1px solid #153040;
+  padding: 10px 14px !important;
+  gap: 8px;
+}
+body.theme-brutalist .chat-input-area::before { display: none; }
+body.theme-brutalist .chat-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8.5px;
+  color: #153040;
+  letter-spacing: 0;
+}
+body.theme-brutalist .chat-input {
+  /* JetBrains Mono for terminal aesthetic on Latin input; non-Latin
+     typed text cascades to the right script font via --font-i18n. */
+  font-family: 'JetBrains Mono', var(--font-i18n);
+  font-weight: 400;
+  font-size: 12px;
+  border: 1px solid #153040 !important;
+  border-radius: 0;
+  box-shadow: none;
+  background: #060D14 !important;
+  color: #FFE680;
+  padding: 8px !important;
+}
+body.theme-brutalist .chat-input::placeholder { color: #1A3A50; }
+body.theme-brutalist .chat-input:focus {
+  border-color: #06B6D4 !important;
+  box-shadow: 0 0 8px rgba(6,182,212,0.15) !important;
+  background: #060D14 !important;
+}
+
+body.theme-brutalist .btn-send {
+  background: #060D14;
+  color: #06B6D4;
+  border: 1px solid #06B6D4;
+  border-radius: 0;
+  box-shadow: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  width: 38px;
+  letter-spacing: 0.5px;
+}
+body.theme-brutalist .btn-send svg { display: block; }
+body.theme-brutalist .btn-send::after { content: none; }
+@media (hover: hover) {
+  body.theme-brutalist .btn-send:hover {
+    background: #06B6D4;
+    color: #060D14;
+    border-color: #06B6D4;
+    box-shadow: none;
+    transform: none;
+  }
+}
+
+body.theme-brutalist .btn-mic {
+  background: #060D14;
+  color: #06B6D4;
+  border: 1px solid #06B6D4;
+  border-radius: 0;
+  box-shadow: none;
+}
+body.theme-brutalist .btn-mic svg { filter: none; }
+@media (hover: hover) {
+  body.theme-brutalist .btn-mic:hover {
+    background: #06B6D4;
+    color: #060D14;
+    box-shadow: none;
+  }
+}
+body.theme-brutalist .btn-mic.listening {
+  background: #060D14;
+  color: #ef4444;
+  border-color: #ef4444;
+  box-shadow: none;
+  animation: none;
+}
+body.theme-brutalist .btn-mic.listening svg { filter: none; }
+
+body.theme-brutalist .btn-clear-input {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 400;
+  font-size: 8px;
+  border: 1px solid #3C3C3C;
+  border-radius: 2px;
+  background: transparent;
+  color: #555;
+}
+
+/* ── Overlay panels ── */
+body.theme-brutalist .overlay-panel {
+  border: 2px solid #0C1E2A;
+  border-radius: 2px;
+  box-shadow: 4px 4px 0 rgba(12,30,42,0.2);
+  background: #FFFFFF;
+}
+body.theme-brutalist .overlay-header {
+  border-bottom: 2px solid #0C1E2A;
+  background: #F5F0E8;
+}
+body.theme-brutalist .overlay-title {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+body.theme-brutalist .overlay-close {
+  border: 2px solid #0C1E2A;
+  border-radius: 2px;
+  background: #FFFFFF;
+}
+body.theme-brutalist .overlay-close:hover {
+  background: #FF3B3B;
+  color: #fff;
+}
+
+/* History items */
+body.theme-brutalist .history-item {
+  border: 2px solid #0C1E2A;
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 rgba(12,30,42,0.2);
+  background: #FFFFFF;
+  transition: all 0.1s;
+}
+body.theme-brutalist .history-item:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 rgba(12,30,42,0.2);
+}
+body.theme-brutalist .history-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+}
+body.theme-brutalist .history-meta {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* Export panel */
+body.theme-brutalist .export-option {
+  border: 2px solid #0C1E2A;
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 rgba(12,30,42,0.2);
+  background: #FFFFFF;
+}
+body.theme-brutalist .export-option.selected {
+  background: #FFD100;
+  border-color: #0C1E2A;
+}
+body.theme-brutalist .export-option:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 rgba(12,30,42,0.2);
+}
+body.theme-brutalist .export-section-title {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 900;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+body.theme-brutalist .btn-export-go {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 900;
+  background: #FFD100;
+  color: #0C1E2A;
+  border: 2px solid rgba(12,30,42,0.35);
+  border-radius: 4px;
+  box-shadow: 4px 4px 0 rgba(12,30,42,0.2);
+  text-transform: uppercase;
+}
+body.theme-brutalist .btn-export-go:hover {
+  background: #FF3B3B;
+  color: #fff;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 rgba(12,30,42,0.2);
+}
+
+/* Lang panel */
+body.theme-brutalist .lang-option {
+  border: 2px solid transparent;
+  border-radius: 4px;
+  transition: all 0.1s;
+}
+body.theme-brutalist .lang-option:hover {
+  border-color: #0C1E2A;
+  background: #F5F0E8;
+}
+body.theme-brutalist .lang-option.active {
+  border-color: #0C1E2A;
+  background: #FFD100;
+  box-shadow: 2px 2px 0 rgba(12,30,42,0.2);
+}
+body.theme-brutalist .lang-search {
+  font-family: 'Syne', sans-serif;
+  border: 2px solid rgba(12,30,42,0.35);
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 rgba(12,30,42,0.2);
+}
+body.theme-brutalist .lang-section-label {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 900;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+/* ── Bookmarks ── */
+body.theme-brutalist .bookmark-item {
+  border: 2px solid #0C1E2A;
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 rgba(12,30,42,0.2);
+  background: #FFFFFF;
+}
+body.theme-brutalist .bm-ts {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  background: #FFD100;
+  border: 2px solid #0C1E2A;
+  border-radius: 2px;
+  color: #0C1E2A;
+}
+body.theme-brutalist .bm-note {
+  /* font-family from theme-level --font-content-body redefinition (Syne). */
+  font-weight: 500;
+}
+body.theme-brutalist .btn-add-bm {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 900;
+  background: #FFD100;
+  color: #0C1E2A;
+  border: 2px solid rgba(12,30,42,0.35);
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 rgba(12,30,42,0.2);
+}
+body.theme-brutalist .btn-add-bm:hover {
+  background: #0891B2;
+  color: #fff;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 rgba(12,30,42,0.2);
+}
+
+/* ── Language group / bilingual controls ── */
+body.theme-brutalist .lang-bar {
+  background: transparent;
+  border-bottom: none;
+  gap: 6px;
+}
+body.theme-brutalist .lang-group-btn.mobile-lang-globe {
+  border: none;
+  border-radius: 4px;
+  box-shadow: none;
+  padding: 6px;
+  background: transparent;
+}
+body.theme-brutalist .lang-group-btn.mobile-lang-globe:hover { background: rgba(8,145,178,0.1); }
+body.theme-brutalist .bilingual-controls {
+  gap: 4px;
+}
+body.theme-brutalist .lang-flag-btn,
+body.theme-brutalist .lang-collapse-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 5px;
+  font-size: 14px;
+}
+body.theme-brutalist .lang-flag-btn:hover,
+body.theme-brutalist .lang-collapse-btn:hover { background: var(--accent-light); }
+body.theme-brutalist #langToggleBtn {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+body.theme-brutalist .lang-switch-all {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  border: 2px solid #0C1E2A;
+  border-radius: 2px;
+}
+body.theme-brutalist .section-lang-tab {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  border: 2px solid #0C1E2A;
+  border-radius: 2px;
+}
+body.theme-brutalist .section-lang-tab.active {
+  background: #0891B2;
+  color: #fff;
+  border-color: #0C1E2A;
+  box-shadow: 2px 2px 0 rgba(12,30,42,0.2);
+}
+
+/* ── Progress / loading states ── */
+/* Brutalist .summary-progress-msg, .sp-text moved to summary.css */
+body.theme-brutalist .skeleton-line {
+  background: #E0D9CC;
+  border: 1px solid #0C1E2A;
+  border-radius: 2px;
+}
+body.theme-brutalist .progress-slot {
+  border: 2px solid #0C1E2A;
+  border-radius: 4px;
+  background: #F5F0E8;
+}
+body.theme-brutalist .progress-slot.collapsed {
+  border-width: 0;
+  background: transparent;
+}
+
+
+/* ── Scrollbars ── */
+/* body.theme-brutalist .chapters-list scrollbar moved to chapters.css */
+/* body.theme-brutalist .summary-pane scrollbar moved to summary.css */
+body.theme-brutalist .chat-messages,
+body.theme-brutalist .bookmarks-pane,
+body.theme-brutalist .overlay-body { scrollbar-width: none; }
+/* body.theme-brutalist .transcript-list scrollbar moved to transcript.css */
+body.theme-brutalist .is-scrolling { scrollbar-width: thin; scrollbar-color: #0891B2 transparent; }
+body.theme-brutalist ::-webkit-scrollbar { width: 0; }
+body.theme-brutalist .is-scrolling::-webkit-scrollbar { width: 3px; }
+body.theme-brutalist .is-scrolling::-webkit-scrollbar-track { background: transparent; }
+body.theme-brutalist .is-scrolling::-webkit-scrollbar-thumb { background: #0891B2; }
+body.theme-brutalist .is-scrolling::-webkit-scrollbar-thumb:hover { background: #DC2626; }
+
+/* ── Casual mode override for brutalist ── */
+body.theme-brutalist.casual-mode .chat-title { color: #06B6D4; }
+body.theme-brutalist.casual-mode .chat-header { border-bottom-color: #153040; }
+body.theme-brutalist.casual-mode .mobile-chat-close-label { color: #DC2626; }
+body.theme-brutalist.casual-mode .mech-play-btn { background: rgba(255,209,0,0.15); }
+body.theme-brutalist.casual-mode .mech-play-btn svg { fill: #FFD100; filter: drop-shadow(0 0 6px rgba(255,209,0,1.00)); }
+body.theme-brutalist.casual-mode .mech-play-btn:hover { background: rgba(255,209,0,0.25); }
+body.theme-brutalist.casual-mode .mech-play-btn:hover svg { fill: #fff; filter: drop-shadow(0 0 8px rgba(255,209,0,1.00)); }
+
+/* ── Chat panel in brutalist: override dark lang tabs ── */
+body.theme-brutalist .chat-panel .section-lang-tab {
+  background: #F5F0E8;
+  border-color: #0C1E2A;
+  color: #2A5A70;
+}
+body.theme-brutalist .chat-panel .section-lang-tab.active {
+  background: #0891B2;
+  color: #fff;
+}
+
+/* ── Export tab button in brutalist ── */
+body.theme-brutalist .export-tab-btn {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  text-transform: uppercase;
+}
+
+/* ── Highlight pill in brutalist ── */
+body.theme-brutalist .highlight-pill {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  border: 2px solid #0C1E2A;
+  border-radius: 4px;
+  box-shadow: 2px 2px 0 rgba(12,30,42,0.2);
+}
+
+/* ── Translation quality warning ── */
+body.theme-brutalist .translation-quality-warning {
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  border: 2px solid #0C1E2A;
+  border-radius: 4px;
+  background: #FFF0F0;
+}
+
+/* Brutalist transcript-note moved to transcript.css */
+
+/* ── end neobrutalist theme ── */

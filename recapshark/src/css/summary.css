@@ -1,0 +1,425 @@
+/* ═══════════════════════════════════════════════════════════
+   summary.css — Summary panel styles + double-buffer crossfade.
+   Direction/font is per-display, not from #resultsView.
+   ═══════════════════════════════════════════════════════════
+   font-system: hardcoded font-family declarations in this file are
+   intentional UI labels:
+     1. .summary-progress-msg / .summary-progress-inline /
+        .panel-progress-banner — Space Grotesk for progress text. UI
+        copy currently English-only.
+     2. Brutalist theme overrides for context-card/badge use Unbounded
+        (signature brutalist face) — intentional aesthetic, not user
+        content.
+
+   User-content selectors (.summary-quick-text, .context-text,
+   .summary-title-label, .context-label, .summary-quick-label, .rs-badge)
+   use role vars. .summary-quick-text + .context-text explicitly set
+   var(--font-content-body) so they don't accidentally inherit a UI
+   font from a parent.
+
+   Per-display .lang-XX rules carry layout tweaks (line-height,
+   letter-spacing) only; font face from cascade.
+
+   See docs/_tech/13_LANGUAGE_AND_FONTS.md.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Double-buffer display host ──
+   Flex-fill chain (matches chapters pattern): stable host size, scroll inside the
+   displays. Container never resizes during a language switch — both displays
+   overlay the same stable area and just crossfade opacity. */
+.summary-display-host { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ss-display { min-height: 0; }
+.ss-display-active { position: relative; z-index: 2; flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.ss-display-standby { position: absolute; inset: 0; opacity: 0; pointer-events: none; z-index: 1; overflow-y: auto; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.ss-display::-webkit-scrollbar { width: 4px; }
+.ss-display::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── Per-display RTL ── */
+.ss-display.rtl .summary-quick-text,
+.ss-display.rtl .context-text,
+.summary-wheel-host.rtl .summary-quick-text,
+.summary-wheel-host.rtl .context-text { direction: rtl; text-align: right; }
+.ss-display.rtl .context-block,
+.summary-wheel-host.rtl .context-block { border-left: 1px solid #67C8D8; border-right: 3px solid var(--accent); direction: rtl; }
+.ss-display.rtl .summary-title-label,
+.summary-wheel-host.rtl .summary-title-label { direction: rtl; text-align: right; border-left: none; border-right: 4px solid #0C1E2A; padding-left: 0; padding-right: 10px; }
+
+/* ── Per-display non-Latin script layout tweaks ──
+   Persian / Arabic / Hebrew each render in the right face automatically via
+   the --font-i18n cascade and the script-disambiguation rules in
+   dashboard.css. The rules below carry only the layout tweaks dense scripts
+   need: more line-height for breathing room, no letter-spacing tracking,
+   larger context-label. The mobile SummaryNativeScroll host
+   (.summary-wheel-host — class name kept from the legacy 3D-cylinder UI
+   for back-compat with downstream rules) gets the same treatment since it
+   is NOT a .ss-display. Direction/text-align come from the .ss-display.rtl
+   section above. */
+.ss-display.lang-fa .summary-quick-text, .summary-wheel-host.lang-fa .summary-quick-text,
+.ss-display.lang-ar .summary-quick-text, .summary-wheel-host.lang-ar .summary-quick-text,
+.ss-display.lang-he .summary-quick-text, .summary-wheel-host.lang-he .summary-quick-text { line-height: 1.8; }
+.ss-display.lang-fa .context-text, .summary-wheel-host.lang-fa .context-text,
+.ss-display.lang-ar .context-text, .summary-wheel-host.lang-ar .context-text,
+.ss-display.lang-he .context-text, .summary-wheel-host.lang-he .context-text { line-height: 1.75; }
+.ss-display.lang-fa .context-label, .summary-wheel-host.lang-fa .context-label,
+.ss-display.lang-ar .context-label, .summary-wheel-host.lang-ar .context-label,
+.ss-display.lang-he .context-label, .summary-wheel-host.lang-he .context-label { font-size: 16px; line-height: 1.75; letter-spacing: 0; }
+.ss-display.lang-fa .summary-title-label,
+.summary-wheel-host.lang-fa .summary-title-label { letter-spacing: 0; }
+
+/* ── Base ── */
+.summary-title-label { font-family: var(--font-content-heading); font-size: 16px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #0C1E2A; margin-bottom: 12px; border-left: 4px solid #0C1E2A; padding-left: 10px; }
+/* RTL/lang-fa overrides for .summary-title-label are per-display (.ss-display.rtl / .ss-display.lang-fa) above */
+
+.summary-pane { padding: 18px 20px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+.summary-quick-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.summary-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.summary-quick-label { font-family: var(--font-content-heading); font-size: 9.5px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); }
+.rs-badge { font-size: 10px; font-weight: 700; font-family: var(--font-content-heading); background: var(--accent); color: #fff; padding: 2px 8px; border-radius: 20px; }
+.summary-quick-text { font-family: var(--font-content-body); font-size: 16px; font-weight: 500; color: var(--text-primary); line-height: 1.65; }
+
+/* ── Context block ── */
+.summary-context-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.summary-inline-divider { border: none; border-top: 1px dashed var(--border); margin: 14px 0; }
+.context-block { background: var(--accent-light); border: 1px solid #67C8D8; border-left: 3px solid var(--accent); border-radius: var(--radius-sm); padding: 12px 14px; }
+.context-block-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.context-shark-icon { font-size: 14px; opacity: 0.6; }
+.context-label { font-family: var(--font-content-heading); font-size: 14px; font-weight: 700; letter-spacing: 1.5px; text-transform: none; color: var(--accent); }
+.context-label .context-brand { font-weight: 500; }
+.context-text { font-family: var(--font-content-body); font-size: 15px; color: var(--text-secondary); line-height: 1.7; }
+.context-block > .bilingual-sub { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+
+/* ── Highlights ── */
+.summary-highlight { color: var(--highlight-kw, var(--accent)); font-weight: 600; background: none; }
+.summary-highlight-name { color: var(--highlight-name, var(--accent2)); background: none; }
+.summary-highlight-place { color: var(--highlight-place, var(--accent2)); font-weight: 600; background: none; }
+.summary-highlight-date { color: var(--highlight-date, #8B7355); font-weight: 600; background: none; }
+/* karaoke styles moved to css/karaoke.css (single source of truth) */
+.context-block .summary-highlight { color: var(--highlight-name, var(--accent2)); }
+.context-block .summary-highlight-name { color: var(--highlight-kw, var(--accent)); }
+.context-block .summary-highlight-date { color: var(--highlight-date, #8B7355); }
+
+/* RTL + lang-specific rules are per-display only (.ss-display.rtl, .ss-display.lang-fa, etc.)
+   See "Per-display" section above. No #resultsView-scoped rules — those cause premature
+   RTL flip before translated content arrives. */
+
+/* ── Progress spinner ── */
+.summary-progress-msg {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 500;
+  line-height: 1.35;
+  color: var(--accent, #0891B2); background: var(--accent-light, #C8EEF5);
+  border-radius: var(--radius-sm, 6px);
+}
+.sp-spinner {
+  width: 14px; height: 14px; border: 2px solid var(--accent, #0891B2);
+  border-top-color: transparent; border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.sp-text {
+  flex: 1;
+  line-height: 1.35;
+  font-variant-numeric: oldstyle-nums;
+}
+
+/* ── Inline translation progress (overlay, no layout shift) ── */
+/* .ss-display-active already has position: relative — no extra rule needed */
+.summary-progress-inline {
+  position: absolute; top: 8px; left: 8px; right: 8px; z-index: 5;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px;
+  font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 500;
+  color: var(--accent, #0891B2); background: var(--accent-light, #C8EEF5);
+  border-radius: var(--radius-sm, 6px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease-in;
+}
+.summary-progress-inline.visible { opacity: 0.9; }
+
+/* ── Generic per-panel translation progress banner ──
+   ABSOLUTELY positioned overlay — does NOT take layout space and never
+   pushes panel content. Sits over the top of whichever .tab-pane it's
+   mounted in, fades in/out via opacity. pointer-events:none so taps
+   pass through to the content underneath (scroll, clicks). The first
+   pass of this used a flex-child banner with margin, which pushed every
+   panel's content down while the banner was visible AND left the row
+   empty after fade-out (flex children don't collapse on opacity:0) —
+   user reported it as a visible jump on appear + lingering empty row
+   after disappear. Absolute + z-index sidesteps both.
+
+   Parent .tab-pane needs `position: relative` (added below) for the
+   absolute anchor to land in the right spot. */
+.panel-progress-banner {
+  position: absolute;
+  top: 8px; left: 12px; right: 12px;
+  z-index: 10;
+  pointer-events: none;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 500;
+  line-height: 1.35;
+  color: var(--accent, #0891B2); background: var(--accent-light, #C8EEF5);
+  border-radius: var(--radius-sm, 6px);
+  opacity: 0;
+  transition: opacity 0.2s ease-in;
+}
+.panel-progress-banner.visible { opacity: 0.9; }
+/* Positioning context for the absolute banner. Layout-neutral —
+   .tab-pane already has flex-direction: column; adding relative
+   positioning doesn't change any existing layout. Scoped to the
+   four tabs that actually mount banners. */
+#tab-summary,
+#tab-chapters,
+#tab-transcript { position: relative; }
+
+/* ── Bouncing dots loader ── */
+.sp-dots { display: flex; gap: 3px; align-items: center; }
+.sp-dots span {
+  width: 5px; height: 5px;
+  background: var(--accent, #0891B2);
+  border-radius: 50%;
+  animation: sp-bounce 1.2s ease-in-out infinite;
+}
+.sp-dots span:nth-child(2) { animation-delay: 0.15s; }
+.sp-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes sp-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* ── Summary bilingual subs ── */
+.ss-display > .bilingual-sub {
+  font-size: 14px;
+  padding-left: 2px;
+  margin-bottom: 14px;
+}
+/* RTL bilingual sub direction/line-height. Font face from cascade. */
+body[data-translate-lang="fa"] .ss-display > .bilingual-sub,
+body[data-translate-lang="ar"] .ss-display > .bilingual-sub,
+body[data-translate-lang="he"] .ss-display > .bilingual-sub { direction: rtl; text-align: right; line-height: 1.75; }
+body[data-translate-lang="ur"] .ss-display > .bilingual-sub { direction: rtl; text-align: right; }
+
+/* ── Switched mode (RTL context block + summary text) ── */
+body.bilingual-mode-switched[data-translate-lang="fa"] .context-block,
+body.bilingual-mode-switched[data-translate-lang="ar"] .context-block,
+body.bilingual-mode-switched[data-translate-lang="he"] .context-block,
+body.bilingual-mode-switched[data-translate-lang="ur"] .context-block { direction: rtl; border-left: 3px solid var(--accent); border-right: 1px solid #67C8D8; }
+/* Switched-mode context-label — font face from cascade; this block left
+   intentionally empty after font-family migration. Keep direction etc.
+   inheritance from per-display rules above. */
+
+body.bilingual-mode-switched[data-translate-lang="fa"] .summary-quick-text,
+body.bilingual-mode-switched[data-translate-lang="fa"] .context-text { direction: rtl; text-align: right; line-height: 1.75; }
+
+body.bilingual-mode-switched[data-translate-lang="ar"] .summary-quick-text,
+body.bilingual-mode-switched[data-translate-lang="ar"] .context-text { direction: rtl; text-align: right; line-height: 1.75; }
+
+body.bilingual-mode-switched[data-translate-lang="he"] .summary-quick-text,
+body.bilingual-mode-switched[data-translate-lang="he"] .context-text { direction: rtl; text-align: right; line-height: 1.75; }
+
+/* ── Translation highlights in bilingual subs ── */
+.bilingual-sub .summary-highlight,
+.bilingual-sub .summary-highlight-name,
+.bilingual-sub .summary-highlight-date {
+  background: none;
+  color: var(--highlight-tr, #B45309);
+  font-weight: 600;
+}
+
+/* ── Mobile ── */
+@media (max-width: 900px) {
+  /* Summary panel — Mobile flex chain (matches transcript flat list) */
+  #tab-summary.tab-pane.active {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  #summaryPanel.summary-pane {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+  }
+  #summaryPanel .summary-wheel-host {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    /* margin-top:12px (not 8px) aligns the panel border with the transcript
+       tab's first-paragraph position so summary/chapters/transcript/subtitles
+       all start at the same vertical line — no perceived "panel jump" when
+       switching tabs. Transcript has no panel border; its first paragraph
+       lands at .flat-transcript-content's 4px top-padding + .transcript-
+       paragraph's 8px top-padding = 12px from the top of .tab-content. */
+    margin: 12px 14px 14px;
+    overflow: hidden;
+  }
+  .summary-pane {
+    overflow-y: visible;
+  }
+
+  /* ── SummaryNativeScroll (mobile summary scroll) ──
+   *
+   * Native vertical scroll container. The mask-image fades top + bottom
+   * edges to preserve the legacy 3D-cylinder UI's "viewport window" feel
+   * without the 1,260-DOM-node compositor cost of the old slice tree.
+   *
+   * Why mask-image and not overlay divs:
+   *   - zero extra DOM
+   *   - no z-index management
+   *   - no pointer-events:none worry over the native-scroll surface
+   *   - hardware-accelerated on iOS Safari
+   *   - one CSS line swap if we ever want to change the fade falloff
+   *
+   * `-webkit-mask-image` is duplicated for older Safari which only honors
+   * the prefixed property — current Safari accepts both. Padding (16px) is
+   * carried over from the legacy cylinder's contentPadding so first/last
+   * lines don't feel visually clipped. */
+  .summary-native-scroll {
+    height: 100%;
+    width: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: 16px;
+    /* Mask gradient: opaque in the middle band, fading at top + bottom. */
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      black 24px,
+      black calc(100% - 28px),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      black 24px,
+      black calc(100% - 28px),
+      transparent 100%
+    );
+    /* Layer isolation: keep summary scroll repaints from cascading into
+       the rest of the page. */
+    contain: layout style paint;
+    isolation: isolate;
+  }
+  /* Reduced motion: no mask animation cost, but kill the mask entirely so
+     screen-reader/print-style users see the content un-faded at edges. */
+  @media (prefers-reduced-motion: reduce) {
+    .summary-native-scroll {
+      -webkit-mask-image: none;
+      mask-image: none;
+    }
+  }
+  .summary-native-content {
+    /* The existing summary typography rules apply through the rich-HTML
+       descendants (paragraphs, headers, context blocks, etc.). The
+       wrapper itself is just a layout anchor + a max-width readability
+       cap on tablet-sized viewports. */
+    max-width: 72ch;
+    margin: 0 auto;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Brutalist theme overrides
+   ═══════════════════════════════════════════════════════════ */
+body.theme-brutalist .summary-pane {
+  background: #F5F0E8;
+}
+body.theme-brutalist .summary-quick-card {
+  background: #FFFFFF;
+  border: 2px solid #0C1E2A;
+  border-radius: 4px;
+  box-shadow: 4px 4px 0 rgba(12,30,42,0.2);
+}
+body.theme-brutalist .summary-quick-label {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 900;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+body.theme-brutalist .rs-badge {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 900;
+  border-radius: 4px;
+  border: none;
+  box-shadow: none;
+}
+body.theme-brutalist .summary-quick-text {
+  /* font-family from theme-level --font-content-body redefinition (Syne). */
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1.7;
+}
+body.theme-brutalist .summary-context-card {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+body.theme-brutalist .context-block {
+  background: #F5F0E8;
+  border: 2px solid #0C1E2A;
+  border-left: 4px solid #0891B2;
+  border-radius: 2px;
+  box-shadow: 3px 3px 0 rgba(12,30,42,0.2);
+}
+body.theme-brutalist .context-label {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 900;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+/* Brutalist non-Latin context-label — size/weight tweaks only.
+   Font face from cascade + script disambiguation. */
+body.theme-brutalist .ss-display.lang-fa .context-label,
+body.theme-brutalist .ss-display.lang-ar .context-label,
+body.theme-brutalist .ss-display.lang-he .context-label { font-size: 14px; font-weight: 600; line-height: 1.75; letter-spacing: 0; }
+body.theme-brutalist .context-text {
+  /* font-family from theme-level --font-content-body redefinition (Syne). */
+  font-weight: 500;
+  line-height: 1.7;
+}
+body.theme-brutalist .summary-highlight {
+  background: none;
+  color: #DC2626;
+  padding: 0;
+  font-weight: inherit;
+}
+body.theme-brutalist .summary-highlight-name {
+  background: none;
+  color: #0891B2;
+  font-weight: 700;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+}
+body.theme-brutalist .summary-highlight-date {
+  color: #7AAFC0;
+  font-weight: 600;
+}
+body.theme-brutalist .summary-inline-divider {
+  border-top: none;
+  margin: 12px 0;
+}
+body.theme-brutalist .summary-progress-msg {
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+}
+body.theme-brutalist .sp-text {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+}
+body.theme-brutalist .summary-pane { scrollbar-width: none; }

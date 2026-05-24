@@ -1,0 +1,85 @@
+/* ─────────────────────────────────────────────────────────────────────
+   Karaoke active-word highlight — character-level continuous wave.
+
+   Single source of truth for the karaoke visual. Three knobs below are
+   the ONLY values that need tuning per theme; the underlying shape is
+   shape-based (scale + soft outer wash glow), not color-based, so the
+   highlight stays visible even if a future palette tweak lands the glow
+   color near another theme color.
+
+   Tunables (override in any theme block to customize):
+     --karaoke-glow-color   : the halo + scaled-letter color
+                              (default: theme's --highlight-karaoke,
+                               falling back to --accent if unset)
+     --karaoke-scale        : peak letter scale-up at the wave's center
+                              (default: 0.20)
+     --karaoke-radius-sec   : wave half-width in seconds — read by
+                              karaoke.js wave loop, NOT used in CSS
+                              (default: 0.45)
+   ───────────────────────────────────────────────────────────────────── */
+
+/* Karaoke design tokens (--karaoke-glow-color / --karaoke-scale /
+   --karaoke-radius-sec) live in src/css/dashboard.css :root alongside
+   the rest of the design tokens — moved 2026-05-08 (Phase 3 B1). */
+
+/* .k-word: built by karaoke.js around each transcribed token. Entity
+   classes (.tx-name, .tx-org, ...) attach here, so the inherited color
+   becomes the entity color when applicable. The char spans inside
+   inherit that color via currentColor in the color-mix below.
+
+   `display: inline-block` + `white-space: nowrap` makes each word an
+   atomic unit. Without this, the per-char `.k-ch` spans below (each
+   `display: inline-block` for transform: scale support) would each
+   become a line-break opportunity — the browser would wrap mid-word
+   ("Danon" → "Da" / "non"). With this, the browser wraps at word
+   boundaries as users expect. Side effect for dual-language mode: the
+   primary (karaoke'd) column no longer takes extra lines from char-level
+   slicing, so the row height stops bloating and the secondary column
+   stops looking artificially short. */
+.k-word { display: inline-block; white-space: nowrap; }
+
+/* .k-ch: per-character span. Base rule is intentionally minimal — every
+   char on the page (potentially thousands in a long transcript) carries
+   only `display: inline-block`, no calc, no color-mix, no text-shadow.
+   The wave loop sets `--k` (0..1) inline AND adds the `.lit` class only
+   on chars within the wave window; ALL visual effects (color tint,
+   transform, glow) live on `.k-ch.lit`. This is the perf-critical split:
+   non-lit chars cost nothing per paint/scroll. The class+inline-style
+   pair is always set together by the wave loop, so any time `--k > 0`
+   exists, `.lit` is also present — moving color-mix into `.lit` has
+   zero visual difference and removes a per-char calc from every paint. */
+.k-ch {
+  display: inline-block;
+}
+.k-ch.lit {
+  /* will-change hints the browser to pre-allocate a GPU layer for the
+     transform — avoids the per-frame layer-creation churn that the
+     Performance profiler caught (24% of frames spent painting/rendering
+     after the wave radius widened to 1.10s). Scoped to .k-ch.lit
+     specifically (not the base .k-ch) so only the chars currently in the
+     wave window pay the memory cost — non-lit chars stay free. */
+  will-change: transform;
+  color: color-mix(in srgb, currentColor, var(--karaoke-glow-color) calc(100% * var(--k)));
+  transform: scale(calc(1 + var(--karaoke-scale) * var(--k)));
+  transform-origin: center bottom;
+  text-shadow:
+    /* Two-layer glow (was three pre-2026-05-05). The original outer
+       atmospheric layer was 0 0 60px @ 6% alpha — large blur kernels
+       are the most expensive thing mobile GPUs do, and at 60-87
+       simultaneously-lit chars during karaoke playback that's a real
+       compositor cost. Dropped after visual sign-off — the inner two
+       layers carry the perceived sparkle. Restore line if this ever
+       looks too flat:  0 0 60px color-mix(in srgb,
+         var(--karaoke-glow-color) calc(6% * var(--k)), transparent), */
+    0 0 14px color-mix(in srgb, var(--karaoke-glow-color) calc(22% * var(--k)), transparent),
+    0 0 30px color-mix(in srgb, var(--karaoke-glow-color) calc(14% * var(--k)), transparent);
+}
+
+/* Bilingual sub line-level highlight — separate from word-level karaoke,
+   per project memory: lang-2 gets line-level, lang-1 gets word-level. */
+.bilingual-sub.karaoke-sub-active,
+.bilingual-sub span.karaoke-sub-active {
+  color: var(--karaoke-glow-color);
+  transition: color 0.25s ease;
+}
+

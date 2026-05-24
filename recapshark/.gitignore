@@ -1,0 +1,55 @@
+# ─── Dependencies ──────────────────────────────────────────────────────────
+node_modules/
+pipeline/venv/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# ─── Build output ──────────────────────────────────────────────────────────
+dist/
+build/
+*.tsbuildinfo
+
+# ─── Environment & secrets ─────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+service-account*.json
+credentials*.json
+
+# ─── Test output ───────────────────────────────────────────────────────────
+tests/output/
+tests/baselines/
+tests/report/
+test-results/
+playwright-report/
+.pytest_cache/
+.coverage
+coverage/
+
+# ─── Logs & runtime ────────────────────────────────────────────────────────
+*.log
+*.pid
+.gladia_usage.json
+.asr_provider_usage.json
+audio_cache/
+
+# ─── Editor / OS ───────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.sublime-*
+
+# ─── Misc ──────────────────────────────────────────────────────────────────
+*.tmp
+*.bak
+.cache/

@@ -1,0 +1,1439 @@
+/* ===========================================================
+   mobile-layout.css - Mobile @media (max-width: 900px) block
+   Extracted from src/css/dashboard.css 2026-05-08 (Phase 3 D3 ext2).
+   Original line range: 2047-3513.
+
+   ── Mobile breakpoint contract (Phase 4b/B2, 2026-05-08) ──
+   The 900px breakpoint is the SINGLE source-of-truth dividing
+   "mobile / narrow" from "desktop / wide" layouts in RecapShark.
+   It is duplicated in two places that MUST stay in lockstep:
+     1. CSS @media queries — search the codebase for
+        `@media (max-width: 900px)` (this file is the main one;
+        dashboard.css / brutalist.css / chapters.css / summary.css
+        / title.css / transcript.css have a few more).
+     2. JS narrow-viewport checks — single helper at
+        `src/js/core/helpers.js: NARROW_VIEWPORT_MEDIA = '(max-width: 900px)'`
+        + `Helpers.isNarrowViewport()`. ALL JS sites route through
+        the helper; raw `matchMedia('(max-width: 900px)')` /
+        `innerWidth <= 900` is forbidden in non-archived JS.
+   Changing the breakpoint = update the helper string AND grep all
+   CSS `@media (max-width: 900px)` to keep them in sync.
+   ─────────────────────────────────────────────────────────────
+
+   What lives here: the single big @media (max-width: 900px) block
+   that owns nearly all of the mobile layout - dashboard reflow into
+   one column, mobile nav, mobile now-watching bar, mobile mech
+   panel, mobile tab bar (transcript / chapters / summary / chat
+   tabs), mobile flag picker (#mobileFloatingFlags), mobile overlays,
+   mobile scrubber, mobile resize-handle hide, mobile RTL tweaks, etc.
+   Includes the ~12 body.theme-brutalist mobile-only overrides that
+   were nested inside this @media block - they stay together with
+   their non-brutalist mobile siblings here, not in brutalist.css.
+
+   What does NOT live here (intentionally left in dashboard.css):
+   - Other smaller @media (max-width: 900px) blocks scattered in
+     dashboard.css (e.g. mobile chat overlay light variant near the
+     end). They sit next to non-mobile rules they pair with - moving
+     them would shift cascade order against those neighbours.
+
+   Cascade: mobile-layout.css is loaded immediately after
+   dashboard.css and BEFORE brutalist.css in src/index.html. That
+   ordering preserves the original "main brutalist block (now in
+   brutalist.css) wins over mobile-brutalist overrides at equal
+   specificity" relationship - the main block still loads later.
+
+   Selector overlap was checked before extraction:
+   - .flat-transcript: 0 inside mobile @media, 8 in post-block tail
+     (no fight).
+   - .section-lang-tabs: 0 inside mobile @media (no fight).
+   - .bilingual-* inside mobile @media is .bilingual-btn-flags only
+     (post-block uses .bilingual-sub - different selectors).
+   - .chat-chip: 0 inside mobile @media (no fight with brutalist.css).
+   - body.theme-brutalist .tab-btn: brutalist.css wins by load order
+     even after extraction (it loads later).
+   =========================================================== */
+
+/* ── Mobile Layout ── */
+@media (max-width: 900px) {
+  /* !important because transcript.css loads later and sets display: flex
+     with equal specificity — this leaks a 2nd autoscroll button onto mobile. */
+  .desktop-panel-btns { display: none !important; }
+  /* Fullscreen button is hidden on mobile — the native player UI handles
+     fullscreen via the user's OS gestures, and the on-screen control adds
+     clutter on the small scrubber row. Desktop keeps it. */
+  #scrubberFullscreenBtn { display: none; }
+  html, body { overflow-x: hidden; overscroll-behavior-x: none; }
+  /* Hide all scrollbars on mobile */
+  * { scrollbar-width: none; }
+  *::-webkit-scrollbar { display: none; }
+  #resultsView {
+    height: 100dvh;
+    min-height: 0;
+    /* Mobile now uses a bounded flex chain — tab panes scroll internally,
+       not by letting #resultsView scroll. See docs/logs/mobile-panel-height-plan.md. */
+    overflow: hidden;
+    overflow-anchor: none;
+    position: relative;
+    z-index: 1;
+  }
+  /* Hide desktop scroll-to-top button on mobile — #resultsView no longer
+     scrolls (see above), so the button's scrollTop>300 logic never fires.
+     Mobile tabs have their own jump-to-now floater via
+     ensureJumpToNowBtn in renderer-mobile-panels.js. */
+  #scrollTopBtn { display: none !important; }
+  .dashboard {
+    /* flex: 1 1 auto = grow to fill remaining space in #resultsView.
+       Replaces the earlier `flex: 0 0 auto` which was leaving the dashboard
+       at content-size (video-block height) with 380+px of unused space below. */
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: unset;
+    overflow: hidden;
+    contain: none !important;
+    transform: none !important;
+    filter: none !important;
+    will-change: auto !important;
+    perspective: none !important;
+    min-width: 0;
+    background: var(--nav-bg, #061526);
+  }
+  /* During the landing→video morph, the .center-panel slides up via
+     morph-enter-up (opacity 0→1, translateY 20px→0). While it's at
+     opacity 0, the dashboard's dark-navy bg above leaks through, reading
+     as a "dark blue snap" against the cream morph backdrop on
+     #resultsView. Force dashboard cream throughout the morph so the
+     opacity-0 center-panel reveals the same cream surface that
+     body.morphing #resultsView is painting. */
+  body.morphing .dashboard { background: var(--bg); }
+  .resize-handle { display: none; }
+  .left-panel {
+    display: contents;
+    border-right: none;
+  }
+  .video-block {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    position: relative !important;
+    padding: 0 !important;
+    background: #0C1E2A !important;
+    overflow: visible !important;
+  }
+  .video-block::after {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: 0;
+    background: url('../art/video frame/frame_full.png') no-repeat center / 100% 100%;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .frame-channel-label {
+    /* display:block (not flex) so text-overflow:ellipsis can actually
+       collapse a long channel name. With flex + raw text node, ellipsis
+       has no anonymous box to apply to and the text just overflows out
+       the side, sliding under the absolutely-positioned theme switcher
+       on the left (.video-block > .nw-style-group). */
+    display: block;
+    width: 100%;
+    text-align: center;
+    color: rgba(180,195,210,0.7);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 10px 8px 6px;
+    z-index: 15;
+    order: -2;
+    text-shadow: none;
+    background: transparent;
+    /* Single-line truncation when the channel name is wider than the
+       reserved area (e.g. "RIPCITY! | PORTLAND TRAIL BLAZERS PODCAST"). */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .video-block {
+    position: relative;
+  }
+  .video-block > .nw-style-group {
+    position: absolute;
+    top: 2px;
+    left: 8px;
+    z-index: 16;
+    background: none !important;
+    border: none !important;
+    padding: 2px 0 !important;
+  }
+  .frame-channel-label {
+    /* Right-align via text-align (display is block now — see rule above)
+       and reserve enough left padding to clear the theme-switcher icons
+       that float over the left side of this same row. The switcher is
+       3 × 26px buttons + 2 × 10px gaps + 16px container padding ≈ 114px
+       wide, sitting at left:8px. ~130px reserve gives a comfortable
+       breathing-space cushion so the channel name truncates with its
+       ellipsis BEFORE colliding with the leftmost icon, instead of
+       sliding under them. */
+    text-align: right !important;
+    padding-right: 16px !important;
+    padding-left: 130px !important;
+  }
+  /* .ts1-channel moved to title.css */
+  .video-meta {
+    order: -1 !important;
+    width: 50% !important;
+    flex-shrink: 0 !important;
+    min-width: 0 !important;
+    /* Unified dark background for title + controls — tracks the active
+       theme via --nav-bg so it stays a single seamless colour from the
+       title area (.title-display-host also = var(--nav-bg)) all the way
+       through the controls row on every theme. Was hardcoded #0C1E2A which
+       only matched brutalist's nav-bg, leaving other themes mismatched. */
+    background: var(--nav-bg) !important;
+    padding: 4px 20px 8px !important;
+    border: none !important;
+    margin: 0 !important;
+    /* No z-index here — establishing a stacking context on .video-meta
+       traps the iframe's mask passthrough (the iframe at z:15 has a
+       left-fade mask that lets the title show through; when this element
+       creates a stacking context above z:15, the mask hole reveals the
+       body bg instead of the title and the cool overlap effect breaks).
+       The controls row inside still escapes via its own z:130 + position
+       relative, so prev/next buttons still capture taps in the overlap
+       zone. Empty areas pass clicks through via pointer-events:none
+       below; .mech-strip-btn flips back to auto for interactivity. */
+    position: relative !important;
+    pointer-events: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    /* Lock the row height across language switches.
+       —
+       max-height caps .video-meta's hypothetical cross-size in the
+       .video-block flex row, so longer translations / tall-script
+       fonts can no longer push the row taller than .video-embed's
+       aspect-ratio'd height. Set to .video-frame's locked height
+       (16:9 of .video-embed's width, which is 80vw on mobile →
+       80vw * 9 / 16 = 45vw). With both meta and embed bounded to
+       the same value, the row's cross-size is deterministic and
+       nothing below the frame shifts on language switch.
+       —
+       overflow stays VISIBLE: any title content that would overflow
+       the cap is already clipped one level deeper at the title-host
+       (see title.css → .title-display-host { overflow: hidden }), so
+       the meta box itself can keep overflow:visible. This preserves
+       the original .video-meta::after fade gradient — moving it to
+       a higher-z-index pseudo on .video-block created a doubled-
+       shade artifact at the meta/embed boundary because the new
+       gradient painted ABOVE the iframe instead of behind its
+       transparent-mask zone the way the original did. */
+    max-height: calc(80vw * 9 / 16) !important;
+    /* Visual shift via `left` (not transform) on purpose: any non-`none`
+       transform creates a stacking context, which traps the controls
+       row's z-index:130 inside .video-meta — so prev/next buttons can't
+       float above .video-embed (z:15) and the next button got swallowed
+       by the yt-overlay click handler. position:relative + left gives
+       the same -23px shift without establishing a stacking context, so
+       the controls row's z-130 escapes and the buttons capture taps. */
+    left: -23px !important;
+  }
+  /* Soft fade-out on the right edge — extends the dark background past the
+     meta column's right edge and fades into transparency so it blends with
+     the video instead of ending in a hard cut. Uses --nav-bg so it tracks
+     the active theme's panel colour. Sits inside .video-meta (overflow:
+     visible) and paints UNDER the iframe; visible only through the iframe's
+     transparent-mask zone (.video-embed's left 23%), which is exactly where
+     the meta backdrop and the video need to meet. Moving this to a higher-
+     z-index sibling caused a doubled-shade artifact because the gradient
+     painted on top of the iframe instead of behind its mask. */
+  .video-meta::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 100%;
+    width: 48px;
+    height: 100%;
+    background: linear-gradient(to right, var(--nav-bg) 0%, transparent 100%);
+    pointer-events: none;
+  }
+  /* ts-display/ts1-* mobile rules moved to title.css */
+  .video-embed {
+    width: 80% !important;
+    flex-shrink: 0 !important;
+    min-width: 0 !important;
+    position: relative !important;
+    top: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    margin: 0 0 0 -30% !important;
+    /* No z-index — let the video-iframe layers (#ytPlayer, .yt-facade,
+       .yt-fallback at z:2/3, .video-black-cover at z:8) fall UNDER the
+       decorative .video-block::after frame (z-index:10), so the frame's
+       right bezel renders on top of the video instead of being clipped
+       by it. Elements that must stay above the frame escape on their
+       own merit:
+         - #subtitleOverlay (z:15, set in its own rule)
+         - .mech-cc-wrap CC button (z:20, set below in this @media block)
+         - .mobile-controls-row (z:130, inside .video-meta)
+       Previously z-index:15 was set here on the (incorrect) belief that
+       it was required for the subtitle overlay — but the overlay has its
+       own z:15 that works globally once this parent doesn't trap it in
+       a stacking context. */
+    background: transparent !important;
+    /* Mask is scoped to specific video-content children below
+       (#ytPlayer, .yt-facade, .yt-fallback, .yt-overlay) so non-video
+       descendants like #subtitleOverlay are not affected by the fade. */
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    transition: none !important;
+  }
+  .video-embed:not(.collapsed) .video-frame {
+    width: 100% !important;
+    margin: 0 !important;
+    aspect-ratio: 16/9 !important;
+    flex: 0 0 auto !important;
+  }
+  /* Mobile subtitle styling.
+     - bottom: 28px keeps the chip clear of the bottom edge on the
+       short mobile video frame (frame ~45vw tall). The global 5px sits
+       so close to the edge that 2-line subs read as cut off.
+     - font-size: 13.5px is ~10% smaller than the desktop 15px so the
+       overlay covers less of the video on small screens.
+     - line-height: 1.25 (vs the global 1.4) tightens vertical extent
+       so that dense scripts (Persian/Arabic Vazirmatn/Noto, which run
+       visually taller per line) don't push the top of a 2-line chip
+       above the visible video area. */
+  #subtitleOverlay {
+    bottom: 28px !important;
+    font-size: 13.5px !important;
+    line-height: 1.25 !important;
+  }
+  /* Apply the left-fade gradient to the actual video-content layers only
+     (iframe + facade/thumbnail + play overlay). Sibling elements inside
+     .video-frame (subtitle overlay, controls) are left untouched.
+     `.rewind-overlay` and `.rewind-cover` are also masked because the
+     rewind effect's scan lines + tracking band + black cover otherwise
+     paint fully across the frame width — and on mobile the frame extends
+     LEFT under the title via .video-embed's negative margin, so without
+     this mask those rewind elements visibly bleed onto the title area
+     during the rewind animation. */
+  .video-embed #ytPlayer,
+  .video-embed #ytPlayer iframe,
+  .video-embed .yt-facade,
+  .video-embed .yt-fallback,
+  .video-embed .rewind-overlay,
+  .video-embed .rewind-cover {
+    /* Shift video content right by 15% so the iframe's true center
+       (where YT's pause-state play button + our white frameless play
+       button sit) lands at the visual center of the un-masked area
+       (~65% of the frame). Without this, iframe center sat at the
+       LEFT edge of the visible video — the play button looked
+       uncentered, and the visible portion was lopsided. The right 15%
+       of iframe content extends past the frame's right edge and is
+       clipped by .video-frame's `overflow: hidden`. The mask % below
+       is adjusted in tandem (8%/28% in iframe-local coords ≈ 23%/43%
+       in container coords AFTER the 15% shift) so the title still
+       shows through at container 0-23% with fade-out by 43% — same
+       title coverage as before, just with the visible video content
+       repositioned.
+
+       NOTE: .yt-overlay is intentionally EXCLUDED from this rule. It's
+       a pure tap-catcher (no visible content), and shifting/masking it
+       left a dead zone on the left ~15% of the frame where taps had
+       nothing to hit — breaking the "tap anywhere on video to play /
+       pause" behaviour, especially on iOS Safari where the masked
+       transparent zone doesn't capture taps reliably. The overlay must
+       cover the full .video-frame so taps over the title area reach
+       toggleMechPlay. */
+    transform: translateX(15%) !important;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 8%, black 28%) !important;
+    mask-image: linear-gradient(to right, transparent 0%, transparent 8%, black 28%) !important;
+  }
+  .video-embed .video-frame {
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+  /* Reposition the REW badge for mobile. On desktop the badge sits at
+     top-left of .video-frame, which works because the video fills the
+     whole frame. On mobile, .video-frame is shared between the title
+     (left) and the video (right ~57% — see translateX(15%) + mask
+     above), so the default top:14/left:14 lands ON THE TITLE.
+     Anchor it to the bottom of the visible video band, kept far enough
+     left of the time label that the two chips don't crowd each other. */
+  .rew-badge {
+    top: auto;
+    bottom: 14px;
+    left: 32%;
+  }
+  /* Restyle the time label to match the production scrubber timecode
+     (Bebas Neue, tabular nums) — the inherited Space Grotesk read like
+     a different element entirely sitting next to the REW badge. Padding
+     + line-height locked to the badge's so both chips align vertically
+     when both are anchored at bottom:14 (default 4/8 padding produced
+     a shorter box whose text rendered visibly lower than REW's). */
+  .rewind-time-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 1px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    line-height: 1.4;
+  }
+  .video-block + .video-scrubber {
+    width: 100% !important;
+    position: relative !important;
+    z-index: 15 !important;
+    flex-shrink: 0 !important;
+    margin-top: 1px !important;
+  }
+  .frame-glow {
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: url('../art/video frame/glow.png') no-repeat center / 94% 74% !important;
+    mix-blend-mode: screen !important;
+    pointer-events: none !important;
+    z-index: 12 !important;
+    transform: translate(-40px, 10px) !important;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 20%, transparent 65%) !important;
+    mask-image: linear-gradient(to right, transparent 0%, black 15%, black 20%, transparent 65%) !important;
+  }
+  .frame-glow--top { opacity: 0.55 !important; clip-path: inset(0 0 50% 0) !important; }
+  .frame-glow--bottom { opacity: 1 !important; clip-path: inset(50% 0 0 0) !important; }
+
+  .video-meta {
+    display: flex;
+    flex-direction: column;
+  }
+  .mobile-controls-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 0 22px;
+    order: 99;
+    margin-top: auto; /* Stick to bottom of .video-meta (which stretches to video height) */
+    position: relative;
+    z-index: 130;
+  }
+  /* CC button sits in the top-right of the video frame (moved there by
+     mobile-sticky.js). Video-embed is position: relative. 14px inset
+     (was 8px) gives the button breathing room from the video frame edges
+     instead of kissing them. */
+  .video-embed > .mech-cc-wrap {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 20;
+    padding: 0;
+  }
+  .mobile-controls-row .mech-transport {
+    display: flex;
+    justify-content: center;
+    /* Wider gap (was 8px) gives each of the prev/play/next buttons more
+       breathing room so they're comfortably tappable on mobile. */
+    gap: 16px;
+    flex: 1;
+  }
+  .mobile-controls-row .mech-strip-btn {
+    background: color-mix(in srgb, var(--mech-accent) 18%, transparent);
+    border: none;
+    border-radius: 4px;
+    color: var(--mech-icon);
+    cursor: pointer;
+    transition: all 0.15s;
+    /* Re-enable interactivity — .video-meta is pointer-events:none so
+       empty areas pass taps through to the yt-overlay (play/pause). The
+       buttons need to flip back to auto so they actually receive clicks. */
+    pointer-events: auto;
+  }
+  .mobile-controls-row .mech-strip-btn:hover {
+    color: var(--mech-bright);
+    background: color-mix(in srgb, var(--mech-accent) 35%, transparent);
+    box-shadow: 0 0 8px var(--mech-glow);
+  }
+  /* Nav buttons (prev/next) have no background frame, so the icon itself
+     must flash on tap. The HTML hard-codes fill="var(--mech-icon)" on the
+     inline SVGs, so CSS `color` alone is not enough — we override `fill`
+     directly (on both the svg element and its paths for specificity).
+     Instant fill swap on press, 250ms fade-back on release = clear
+     tap-confirmation. */
+  .mobile-controls-row .mech-nav-btn {
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-controls-row .mech-nav-btn svg,
+  .mobile-controls-row .mech-nav-btn svg path {
+    transition: fill 0.25s ease;
+  }
+  .mobile-controls-row .mech-nav-btn:active svg,
+  .mobile-controls-row .mech-nav-btn:active svg path {
+    fill: #FFEB3B !important;
+    transition: none; /* instant on press — base transition handles release */
+  }
+  .mobile-controls-row .mech-strip-btn svg {
+    filter: drop-shadow(0 0 2px color-mix(in srgb, var(--mech-glow) 40%, transparent));
+  }
+  /* Prev/next and play buttons bumped 15% (28→32, 32→37, 14→16 for the
+     SVG glyphs) so they're easier to tap on mobile. */
+  .mobile-controls-row .mech-nav-btn {
+    width: 32px !important;
+    height: 32px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Explicit fill override via CSS — the inline HTML attribute
+       fill="var(--mech-icon)" doesn't always re-evaluate when CSS vars
+       update on theme change, so we set it here to guarantee the icons
+       track the active theme. */
+    color: var(--mech-icon);
+  }
+  .mobile-controls-row .mech-nav-btn svg,
+  .mobile-controls-row .mech-nav-btn svg path {
+    fill: var(--mech-icon);
+  }
+  /* Prev/next have no background, so the icon itself *is* the visual — bump
+     it to ~2× the play-button glyph (16→32) so the arrows read at roughly
+     the same weight as the framed play icon. */
+  .mobile-controls-row .mech-nav-btn svg { width: 32px !important; height: 32px !important; }
+  .mobile-controls-row .mech-play-btn {
+    width: 37px !important;
+    height: 32px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Play button tinted by --accent so each theme's primary colour drives
+       it (strongly distinct per theme). Brutalist preserves its signature
+       yellow via the body.theme-brutalist override below. */
+    background: color-mix(in srgb, var(--accent) 22%, transparent) !important;
+    border-radius: var(--radius);
+    color: var(--accent);
+  }
+  .mobile-controls-row .mech-play-btn svg { width: 16px !important; height: 16px !important; }
+  .mobile-controls-row .mech-play-btn svg,
+  .mobile-controls-row .mech-play-btn svg path {
+    fill: var(--accent);
+  }
+  /* CC button mobile style — scoped to mobile @media but not to a specific
+     parent, so it works whether the button ends up in the video frame or
+     elsewhere. */
+  #mechCcBtn {
+    width: 28px !important;
+    height: 28px !important;
+    /* Dark semi-transparent background (was a faint accent tint) so the
+       CC button stays legible on any video frame — bright, dark, or busy. */
+    background: rgba(0, 0, 0, 0.6);
+    border: none;
+    border-radius: 4px;
+    color: var(--mech-icon);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Mobile CC label — already drives via --accent in the generic rule
+     (home.css) since we switched from --highlight-warm to --accent.
+     Brutalist preservation override (→ --highlight-warm) handles the
+     yellow on brutalist. No per-viewport rule needed here anymore. */
+  #mechCcBtn.on {
+    background: color-mix(in srgb, var(--mech-bright) 18%, transparent);
+    color: var(--mech-bright);
+  }
+  #mechCcBtn.on .mech-cc-label {
+    color: var(--mech-bright);
+  }
+  /* .chapters-block, .tab-btn-chapters, #tab-chapters, .chapters-list-mobile moved to chapters.css */
+  .nav-circle-btn { display: flex; }
+  .center-panel {
+    width: 100%;
+    flex: 1 1 auto;
+    /* min-height: 280px removed — bounded flex chain makes a minimum irrelevant.
+       overflow: visible removed — broke the flex chain for tab panes. */
+    min-height: 0;
+    border-right: none;
+    overflow: hidden;
+    /* contain/transform/filter/will-change/perspective overrides kept
+       defensive — they originally protected the legacy 3D-cylinder
+       transforms; the cylinders are gone but the overrides stay to guard
+       against any future ancestor transform/contain leakage that could
+       clip tab-pane scroll containers. Orthogonal to the height fix. */
+    contain: none !important;
+    transform: none !important;
+    filter: none !important;
+    will-change: auto !important;
+    perspective: none !important;
+    background: var(--bg);
+  }
+  .tab-content {
+    /* Bounded flex container so every tab pane gets identical height from
+       first paint. Was overflow: visible !important which broke the chain. */
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    contain: none !important;
+    transform: none !important;
+    background: var(--bg);
+    transition: filter 0.3s ease;
+  }
+  /* Mobile rewind uses three scoped body classes so the post-rewind reveal
+     can un-blur each zone independently (title → menus → controls) instead
+     of everything un-blurring at once. JS adds all three at rewind start
+     and removes them sequentially in the staggered reveal (app.js). */
+
+  /* --- Zone 1: TITLE (video meta column) --- */
+  /* On mobile, desaturate the entire meta column (title + controls + bg +
+     right-edge fade) during rewind — not just the title host. The title
+     host's own .title-bw::after overlay is turned off at this breakpoint so
+     we don't double up the effect. */
+  .title-bw::after { display: none; }
+  /* Desaturate on the DIRECT CHILDREN of .video-meta (`> *`), NOT on
+     .video-meta itself. Filtering the whole element also desaturated the
+     ::after pseudo (the dark-navy fade-out gradient extending past the
+     meta column's right edge into the video area), which produced a
+     visible "gradient gets darker after rewind" pop because saturate(0)
+     turned the dark-navy gradient gray during the rewind, then the
+     gradient snapped back to full dark-navy on the colorize transition,
+     reading as the thumbnail "getting smaller" / "less white" when in
+     fact only the gradient's saturation had changed. Targeting children
+     leaves the ::after gradient at its natural dark-navy throughout —
+     no contrast shift across the rewind boundary. The 600ms timing
+     matches the iframe + cover grayscale colorize so all three colorize
+     in unison. */
+  .video-meta > * {
+    transition: filter 0.6s ease-out;
+  }
+  body.rewind-mobile-title .video-meta > * {
+    filter: saturate(0);
+  }
+
+  /* --- Zone 2: MENUS (tab bar + tab content) --- */
+  /* Blur the tab content (no opacity-shadow that grows with content as
+     chapters fill in). */
+  body.rewind-mobile-menus .tab-content {
+    filter: blur(3px);
+    pointer-events: none;
+  }
+  /* Blur the tab-bar buttons individually (not the sticky .tab-bar parent —
+     filter on a sticky element causes iOS halo artifacts). */
+  .tab-bar > * { transition: filter 0.3s ease; }
+  body.rewind-mobile-menus .tab-bar {
+    pointer-events: none;
+  }
+  body.rewind-mobile-menus .tab-bar > * {
+    filter: blur(3px);
+  }
+
+  /* --- Zone 3: CONTROLS (video player + transport buttons) --- */
+  /* Also fully disable video transport buttons (play/prev/next/CC) and the
+     YouTube iframe itself, so the user can't trigger playback or seek while
+     the VHS rewind effect is running. .center-panel pointerEvents:none
+     (set in JS) usually covers nested children, but iframes can capture
+     iOS touch events independently — explicit rules here are
+     belt-and-suspenders. */
+  body.rewind-mobile-controls .mobile-controls-row,
+  body.rewind-mobile-controls .video-embed,
+  body.rewind-mobile-controls .video-embed iframe {
+    pointer-events: none !important;
+  }
+  /* Smooth fade transition into/out of the disabled visual state */
+  .mobile-controls-row > * { transition: filter 0.3s ease, opacity 0.3s ease; }
+  /* Apply blur + dim to the individual buttons (not the parent
+     .mobile-controls-row, because it's positioned over the video and a
+     filter on a positioned/sticky parent can cause iOS rendering artifacts
+     — same reason tab-bar uses `> *` instead of the parent itself). */
+  body.rewind-mobile-controls .mobile-controls-row > * {
+    filter: blur(3px);
+    opacity: 0.4;
+  }
+  .tab-pane.active {
+    /* Fills its bounded parent (.tab-content). Every pane inherits the same
+       real height from the flex chain — no resize jumps, no content-driven
+       growth. Was overflow: visible !important. */
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    contain: none !important;
+    transform: none !important;
+    background: var(--bg);
+  }
+  /* Summary panel mobile rules moved to summary.css */
+  /* Transcript/subtitle mobile tab rules moved to transcript.css */
+  .scroll-top-btn {
+    width: 50px; height: 50px;
+    background: var(--nav-bg, #061526);
+    color: var(--mech-bright, #06B6D4);
+    border: 2px solid var(--mech-bright, #06B6D4);
+    box-shadow: 0 0 14px var(--mech-glow, rgba(6,182,212,0.4)), 0 4px 12px rgba(0,0,0,0.3);
+  }
+  /* .summary-pane mobile overflow moved to summary.css */
+  /* Mobile tap visuals on tab buttons — kill ALL interaction backgrounds.
+     Touch devices fire :hover on tap and leave it sticky; some browsers
+     also paint :focus/:active states with their own bg. We force a clean
+     transparent background across every interaction state. */
+  .tab-btn,
+  .tab-btn:hover,
+  .tab-btn:focus,
+  .tab-btn:focus-visible,
+  .tab-btn:focus-within,
+  .tab-btn:active,
+  body.theme-brutalist .tab-btn:hover,
+  body.theme-brutalist .tab-btn:focus,
+  body.theme-brutalist .tab-btn:active {
+    -webkit-tap-highlight-color: transparent !important;
+    background: none !important;
+    background-color: transparent !important;
+    outline: none !important;
+  }
+  .tab-bar {
+    position: sticky !important;
+    top: 0;
+    z-index: 60;
+    display: flex;
+    /* Vertically center every tab button on a single baseline. Without
+       this, buttons whose internal content (e.g. CHAT's larger circle,
+       active-state glows) differ in height end up at different vertical
+       positions because the default cross-axis alignment is `stretch`. */
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 8px !important;
+    gap: 0 !important;
+    background: #0F1923 !important;
+    border: none !important;
+    border-top: 1px solid #1E3448 !important;
+    border-bottom: 1px solid #1E3448 !important;
+    box-shadow: none !important;
+  }
+  /* Visual reorder: LANGUAGE then TOOLS (TOOLS sits last).
+     `order` is flex-only and applies per-flex-container, so direct-child
+     selectors keep the rule scoped to the mobile tab-bar children — the
+     desktop language button lives inside a wrapper div and is unaffected.
+     Default order = 0 for the unset buttons (chapters / summary / trans-
+     sub) so they keep their DOM order, then 1/2 control the trailing
+     two. */
+  .tab-bar > .tab-btn-language     { order: 1; }
+  .tab-bar > .tab-btn-tools-mobile { order: 2; }
+  .tab-btn, .nav-circle-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 0 !important;
+    min-width: 0;
+    flex: 1;
+    border: none;
+    background: none;
+    /* No gray right-border between tabs. */
+    cursor: pointer;
+  }
+  .tab-btn svg, .nav-circle-btn svg { width: 20px !important; height: 20px !important; }
+  .story-circle {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #1E3448;
+    background: #0B1620;
+    transition: all 0.2s ease;
+  }
+  .story-circle svg { flex-shrink: 0; }
+  .story-label {
+    font-size: 9px;
+    font-family: 'Space Grotesk', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    transition: all 0.2s ease;
+  }
+  .tab-bar > div[style] { display: none !important; }
+  /* Inactive nav tabs: unified light-cyan (#7FCFE0). The previous
+     per-tab colors (gold/white/slate/moss) made the bar look noisy and
+     uneven — single accent color reads as a coherent menu, with the
+     active tab's gold glow doing all the "you are here" work. Class-
+     based (not :nth-child) because the visible mobile tabs sit at
+     different DOM positions than the desktop ones. */
+  .tab-btn, .nav-circle-btn { opacity: 0.85; transition: opacity 0.2s ease; position: relative; }
+  .tab-btn.active { opacity: 1; }
+  .tab-bar .tab-btn .story-circle,
+  .tab-bar .nav-circle-btn .story-circle { color: #7FCFE0; border-color: rgba(127,207,224,.5); }
+  .tab-bar .tab-btn .story-label,
+  .tab-bar .nav-circle-btn .story-label { color: #7FCFE0; }
+  .tab-btn.active .story-circle { border-color: #FFD100 !important; color: #FFD100 !important; box-shadow: 0 0 10px rgba(255,209,0,.3), inset 0 0 8px rgba(255,209,0,.1); }
+  .tab-btn.active .story-label { color: #FFD100 !important; font-weight: 600; }
+  .tab-btn.active { background: none !important; border: none !important; box-shadow: none !important; }
+  .tab-btn.active::before { content: ""; position: absolute; top: -10px; left: 18%; right: 18%; height: 2px; background: linear-gradient(90deg, transparent 0%, rgba(255,209,0,.9) 50%, transparent 100%); box-shadow: 0 0 10px rgba(255,209,0,.28); }
+  /* Bookmarks / Export / Language now inherit the unified cyan above —
+     no per-class color overrides. The .active rule below still wins
+     for whichever tab is selected. */
+
+  /* ============================================================== */
+  /*  Mobile Tab Bar Redesign — 5 primary + distinct Chat tab        */
+  /* ============================================================== */
+
+  /* Hide tabs/buttons that aren't part of the mobile primary nav. The
+     Transcript tab still shows on mobile (no longer merged with Subtitles —
+     subtitles tab feature was removed 2026-05-13). */
+  .tab-bar .tab-btn-bookmarks-circle,
+  .tab-bar .export-circle-btn,
+  .mobile-chat-fab { display: none !important; }
+
+  /* Show the mobile-only Tools tab */
+  .tab-btn-tools-mobile { display: flex !important; }
+
+  /* Unified light-cyan (#7FCFE0) for ALL inactive tabs — both .tab-btn
+     (Chapters/Summary/Transcript/Tools) and .nav-circle-btn (Language).
+     Previously only matched .tab-btn, so the .nav-circle-btn-based
+     LANGUAGE button used a different (brighter) color and stood out. */
+  .tab-bar .tab-btn:not(.active) .story-circle,
+  .tab-bar .nav-circle-btn .story-circle {
+    color: #7FCFE0 !important;
+    border-color: rgba(127,207,224,0.5) !important;
+  }
+  .tab-bar .tab-btn:not(.active) .story-label,
+  .tab-bar .nav-circle-btn .story-label {
+    color: #7FCFE0 !important;
+  }
+
+  /* Hide the existing mobile lang-bar — flags now float on content */
+  .lang-bar, #langBar { display: none !important; }
+
+  /* Mobile floating flags container — anchored to .tab-content so the
+     flags sit below the tab-bar, hovering over the content area at the
+     right edge. */
+  .tab-content { position: relative; }
+  #mobileFloatingFlags {
+    position: absolute;
+    top: 10px;
+    right: 8px;
+    /* Must stay ABOVE the snapshot-overlay used by _refreshMobilePanels
+       (renderer-mobile-panels.js) during language-switch crossfades — the
+       overlay sits at z-index: 9999 to cover the panel rebuild. Without
+       this, the floating flags get covered → user perceives a "blink"
+       instead of a smooth highlight update on the active flag. */
+    z-index: 10000;
+    pointer-events: none;
+  }
+  #mobileFloatingFlags > * { pointer-events: auto; }
+  /* Mobile UX: collapse the 3-button bar to a single CYCLING button
+     (handled in translation-bilingual.js → _cycleMobileMode). The
+     two extra buttons stay in the DOM (desktop reuses them) but are
+     hidden here so #bilingualLangVideo is the only visible target.
+     Its graphic morphs to reflect the current mode — single flag for
+     solo, dual flags via the .has-dual-flags marker class + the
+     extended .bilingual-btn-flags rules below. */
+  #mobileFloatingFlags #bilingualLangTarget,
+  #mobileFloatingFlags #bilingualCollapseBtn {
+    display: none !important;
+  }
+  #mobileFloatingFlags #bilingualControls {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    background: transparent;
+    border: none;
+    padding: 0;
+    box-shadow: none;
+  }
+  /* Flag buttons: stacked vertically, dark-grey tile each. Active state
+     is a flat yellow highlight (no glow) — see .lang-btn-active rules
+     below, which override the desktop drop-shadow/inset glow. */
+  #mobileFloatingFlags .lang-flag-btn,
+  #mobileFloatingFlags .lang-collapse-btn {
+    /* Lock dimensions hard. min/max + box-sizing: border-box guarantee the
+       button's outer box stays exactly 40×36 (10% larger than the original
+       36×32 — bumped for the new single-button cycle UX) regardless of
+       border, content, or any inherited padding — so toggling state can't
+       shift neighbouring tiles. */
+    box-sizing: border-box !important;
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    padding: 0;
+    margin: 0;
+    border: 1px solid rgba(55, 65, 81, 0.85) !important;
+    background: rgba(31, 41, 55, 0.82) !important;
+    box-shadow: none !important;
+    border-radius: var(--radius-sm);
+    font-size: 24px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0.95;
+    /* Explicit list (no `all`) so the base rule's `transition: all 0.15s`
+       can't sneak layout-affecting properties into the animation. */
+    transition: background-color 0.15s, border-color 0.15s, opacity 0.2s;
+    outline: none;
+    flex-shrink: 0;
+    flex-grow: 0;
+  }
+  #mobileFloatingFlags .lang-flag-btn:hover,
+  #mobileFloatingFlags .lang-collapse-btn:hover { opacity: 1; }
+
+  /* Active state on mobile: flat yellow highlight — kills the desktop
+     drop-shadow glow + inset shadow defined in the base .lang-btn-active
+     rule (see end of dashboard.css). */
+  #mobileFloatingFlags .lang-flag-btn.lang-btn-active,
+  #mobileFloatingFlags .lang-collapse-btn.lang-btn-active {
+    background: rgba(250, 204, 21, 0.92) !important;
+    border-color: rgba(202, 138, 4, 0.95) !important;
+    filter: none !important;
+    box-shadow: none !important;
+  }
+
+  /* ── Brutalist theme: neumorphism flags ──
+     Replaces the flat yellow active button with a soft 3D look. The
+     buttons appear carved from a SLIGHTLY DARKER cream than the page
+     bg (page is #F5F0E8; buttons are #E8DEC8) so they stand out from
+     the surface instead of blending into it. Opposing soft shadows
+     (warm bottom-right + bright top-left) give the 3D carved feel;
+     selected state flips to brutalist yellow + inset shadows so it's
+     obviously the active one (color delta does the heavy lifting, the
+     inset just keeps the pressed-in 3D quality). Mobile + brutalist
+     only — other themes keep the existing flat yellow active state. */
+  body.theme-brutalist #mobileFloatingFlags .lang-flag-btn,
+  body.theme-brutalist #mobileFloatingFlags .lang-collapse-btn {
+    background: #D2C29A !important;
+    border: none !important;
+    border-radius: 12px !important;
+    box-shadow:
+      4px 4px 10px rgba(120, 95, 55, 0.55),
+      -4px -4px 10px rgba(255, 250, 235, 0.75) !important;
+  }
+  body.theme-brutalist #mobileFloatingFlags .lang-flag-btn.lang-btn-active,
+  body.theme-brutalist #mobileFloatingFlags .lang-collapse-btn.lang-btn-active {
+    background: #FFD100 !important;
+    border-color: transparent !important;
+    box-shadow:
+      inset 3px 3px 6px rgba(160, 110, 0, 0.55),
+      inset -3px -3px 6px rgba(255, 245, 180, 0.85) !important;
+  }
+
+  /* Dual-flag button — "overlapping pins" layout (sandbox option 6).
+     Both flags are shown in FULL (no half-clip, no divider) and offset
+     diagonally with a small rotation, so they read as two flags pinned
+     onto the button. The second child sits on top of the first child
+     (later in DOM = higher in stack without explicit z-index) which
+     gives the layout natural foreground/background depth. The
+     drop-shadow filter separates each pin from its neighbour even when
+     they overlap.
+
+     Same selector pair as the single-flag rules above (#mobileFloatingFlags
+     .lang-collapse-btn / .lang-flag-btn.has-dual-flags) so the BUTTON's
+     background, border-radius, and shadows stay identical across all
+     four cycle states (lang1, lang2, bilingual, bilingual-swapped) —
+     only the inner content changes. */
+  #mobileFloatingFlags .lang-collapse-btn .bilingual-btn-flags,
+  #mobileFloatingFlags .lang-flag-btn.has-dual-flags .bilingual-btn-flags {
+    display: block !important;
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    font-size: 14px !important;
+  }
+  /* No divider in the pins layout — kill the old ::after rule. */
+  #mobileFloatingFlags .lang-collapse-btn .bilingual-btn-flags::after,
+  #mobileFloatingFlags .lang-flag-btn.has-dual-flags .bilingual-btn-flags::after {
+    display: none !important;
+    content: none !important;
+  }
+  #mobileFloatingFlags .lang-collapse-btn .bilingual-btn-flags > span,
+  #mobileFloatingFlags .lang-flag-btn.has-dual-flags .bilingual-btn-flags > span {
+    position: absolute !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: inherit !important;
+    line-height: 1 !important;
+    filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.25));
+  }
+  /* Position, stacking, AND rotation by CHILD ORDER (slot-based). The
+     first child renders at top-left, sits on top (z-index 2), tilts −3°.
+     The second child renders at bottom-right, sits behind (z-index 1),
+     tilts +3°. Slot-based rotation guarantees the two modes are exact
+     mirrors — the top-left flag always looks identical regardless of
+     which language is in it. */
+  #mobileFloatingFlags .lang-collapse-btn .bilingual-btn-flags > span:first-child,
+  #mobileFloatingFlags .lang-flag-btn.has-dual-flags .bilingual-btn-flags > span:first-child {
+    top: 18% !important;
+    left: 14% !important;
+    z-index: 2;
+    transform: rotate(-3deg);
+  }
+  #mobileFloatingFlags .lang-collapse-btn .bilingual-btn-flags > span:nth-child(2),
+  #mobileFloatingFlags .lang-flag-btn.has-dual-flags .bilingual-btn-flags > span:nth-child(2) {
+    bottom: 18% !important;
+    right: 14% !important;
+    z-index: 1;
+    transform: rotate(3deg);
+  }
+  /* Dual-mode pins render flags via the standard _getLangFlag() HTML —
+     native regional-indicator emoji glyph (iOS renders wavy Apple-style)
+     for normal langs, and our hand-drawn iran-flag-wavy.png for fa.
+     Both wavy → consistent style.
+     Pin both the emoji glyph (font-size) and the Persian PNG (explicit
+     width/height) so they render at the SAME visual size in dual mode,
+     overriding the global .lang-flag-emoji / .lang-flag-iran-emoji
+     em-based sizing that would otherwise leave Iran ~5-6% wider. The
+     pixel values below were dialled in to make a 🇺🇸 emoji glyph and the
+     iran-flag-wavy PNG read as the same flag size on iOS Safari. */
+  #mobileFloatingFlags .lang-flag-btn.has-dual-flags .lang-flag-emoji {
+    font-size: 17px !important;
+  }
+  #mobileFloatingFlags .lang-flag-btn.has-dual-flags .lang-flag-iran-emoji {
+    width: 18.75px !important;
+    height: 11.75px !important;
+  }
+  #mobileFloatingFlags .bilingual-progress { display: none; }
+
+  /* Tools panel sub-tabs (Bookmarks / Export inside the overlay) */
+  .tools-panel .tools-subtabs {
+    display: flex;
+    padding: 0 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    gap: 6px;
+  }
+  .tools-panel .tools-subtab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 8px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tools-panel .tools-subtab.active {
+    color: var(--text-primary);
+    border-bottom-color: var(--text-primary);
+  }
+  .tools-panel .tools-subpane { display: none; position: relative; }
+  .tools-panel .tools-subpane.active { display: block; }
+
+  /* Tools sub-pane section heading divider */
+  .tools-panel .tools-section-h {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .tools-panel .tools-section-h::before,
+  .tools-panel .tools-section-h::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Bookmark row */
+  .tools-panel .bm-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 6px;
+    cursor: pointer;
+  }
+  .tools-panel .bm-row:hover { border-color: #E85058; }
+  .tools-panel .bm-row .bm-idx {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: rgba(232,80,88,0.12);
+    color: #E85058;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+    flex-shrink: 0;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  .tools-panel .bm-row .bm-text { flex: 1; min-width: 0; }
+  .tools-panel .bm-row .bm-t1 {
+    font-size: 12px;
+    color: var(--text-primary);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tools-panel .bm-row .bm-t2 {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .tools-panel .bm-row .bm-time {
+    font-size: 10px;
+    color: #E85058;
+    font-family: 'DM Mono', monospace;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  /* Add-bookmark button */
+  .tools-panel .bm-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 10px;
+    margin-top: 4px;
+    background: none;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tools-panel .bm-add:hover {
+    border-color: #E85058;
+    color: #E85058;
+    border-style: solid;
+  }
+
+  /* Sample-data hint */
+  .tools-panel .bm-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 10px 8px 4px;
+    font-style: italic;
+  }
+
+  /* Coming-soon dialog inside bookmarks sub-pane */
+  .tools-panel .bm-dialog {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(12,30,42,0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 5;
+  }
+  .tools-panel .bm-dialog.show { display: flex; }
+  .tools-panel .bm-dialog-card {
+    width: 100%;
+    max-width: 280px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 18px;
+    text-align: center;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+    animation: bmDialogIn 0.22s ease-out;
+  }
+  @keyframes bmDialogIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .tools-panel .bm-dialog-emoji { font-size: 32px; margin-bottom: 8px; }
+  .tools-panel .bm-dialog-title {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  .tools-panel .bm-dialog-body {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+  .tools-panel .bm-dialog-close {
+    padding: 9px 22px;
+    background: var(--text-primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  /* Export options — 2-column grid on mobile tools panel */
+  .tools-panel .export-grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .tools-panel .export-grid-2col .export-option {
+    margin: 0;
+    padding: 10px;
+  }
+  .tools-panel .export-grid-2col .export-option .export-label {
+    font-size: 11px;
+  }
+  .tools-panel .export-grid-2col .export-option .export-desc {
+    font-size: 9.5px;
+  }
+  /* Mobile transcript search section moved to transcript.css */
+  #langBar {
+    position: sticky !important;
+    z-index: 13;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .chat-panel {
+    width: 100%;
+    min-height: 280px;
+    flex-shrink: 0;
+  }
+  /* ── ROW 1 (nav) ── */
+  nav { overflow: visible; height: 40px; padding: 0 8px; gap: 4px; position: sticky; top: 0; z-index: 100; }
+  .nav-brand img, .nav-brand svg { height: 16px !important; }
+  .nav-sharky { height: 20px !important; transform: translateY(1px); }
+  .nav-brand #navSharkSvg { transform: translateY(-4px); margin-left: 2px; }
+  .nav-brand .logo-com { transform: translate(3px, 0px); }
+  .nav-slogan { display: none; }
+  .nav-divider { display: none; }
+  .font-size-ctrl { display: none; }
+  .nw-font-ctrl { display: none; }
+  .btn-paste-hint { display: none; }
+  .nav-mobile-right {
+    display: flex !important;
+  }
+  .nav-chat-btn-m { display: flex !important; }
+
+  /* ── ROW 2 (nw-bar) ── */
+  .now-watching-bar {
+    display: flex; flex-direction: row; align-items: center;
+    justify-content: flex-start;
+    height: auto; padding: 2px 6px; gap: 0;
+    grid-template-columns: unset;
+    position: sticky !important;
+    z-index: 70 !important;
+  }
+  .nw-left { display: none; }
+  .nw-title { display: none; }
+  .nw-history-btn { display: none !important; }
+  .nw-profile-btn { display: none !important; }
+
+  .video-meta .video-tags { display: none !important; }
+  .nw-meta { display: none !important; }
+
+  .mech-panel { flex: 0 1 auto !important; min-width: 0; width: auto !important; max-width: 100%; height: auto !important; align-self: center; }
+  .mech-strip { background: none !important; height: auto !important; padding: 0 2px !important; align-items: center !important; }
+  .mech-divider { display: none !important; }
+  .mech-neon-line { display: none !important; }
+  .mech-strip-wrap { position: relative !important; padding-top: 0 !important; align-items: center !important; }
+  .mech-fade-bg { display: none !important; }
+  .mech-play-btn { width: 30px !important; height: 30px !important; border-radius: 6px; }
+  .mech-play-btn svg { width: 16px !important; height: 16px !important; }
+  .mech-nav-btn { width: 33px !important; height: 33px !important; }
+  .mech-nav-btn svg { width: 33px !important; height: 33px !important; }
+  #mechCcBtn { width: 40px !important; height: 40px !important; border-radius: 5px; }
+  .mech-time { display: none !important; }
+  .mech-time + .mech-divider { display: none !important; }
+  .mech-status { display: none !important; }
+  .mech-status + .mech-divider { display: none !important; }
+  .mech-cc-wrap { padding: 0 2px; margin-left: 3px; }
+  .mech-time-sep { color: #0A7A9A !important; }
+  .nw-left, .nw-right, .mech-strip, .mech-transport, .mech-time { align-items: center !important; }
+
+  .nw-right {
+    display: flex !important; align-items: center; gap: 3px; margin-left: auto;
+  }
+  .nw-style-group {
+    display: flex !important; align-items: center; gap: 10px;
+    background: rgba(232,71,108, 0.12);
+    border: 1px solid rgba(232,71,108, 0.3);
+    border-radius: 8px; padding: 2px 8px;
+  }
+  .theme-cycle-btn {
+    width: 26px !important; height: 26px !important;
+    padding: 0 !important; font-size: 12px !important;
+    display: flex !important; align-items: center; justify-content: center;
+    border: 1px solid rgba(232,71,108, 0.2) !important;
+    border-radius: 5px; background: rgba(232,71,108, 0.08);
+    line-height: 1; color: rgba(232,71,108, 0.7);
+  }
+  .theme-cycle-btn .style-icon {
+    width: 15px; height: 15px; stroke: rgba(232,71,108, 0.65);
+  }
+  .theme-cycle-btn .style-icon-shark {
+    width: 17px; height: 17px; opacity: 0.55; filter: saturate(0.6);
+  }
+  .theme-cycle-btn.is-active {
+    background: rgba(232,71,108, 0.22) !important;
+    border-color: rgba(232,71,108, 0.6) !important;
+    box-shadow: 0 0 8px rgba(232,71,108, 0.4);
+  }
+  .theme-cycle-btn.is-active .style-icon {
+    stroke: rgb(232,71,108);
+  }
+  .theme-cycle-btn.is-active .style-icon-shark {
+    opacity: 1; filter: saturate(1) drop-shadow(0 0 4px rgba(232,71,108, 0.7));
+  }
+
+  .nw-paste-btn { display: none !important; }
+
+  .video-embed { border: none; padding: 0; }
+  .toast { position: fixed; top: 120px; left: 16px; right: auto; bottom: auto; transform: none; z-index: 9999; font-size: 11px; padding: 6px 14px; background: #111827; color: #F9FAFB; border: 1px solid #374151; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+  .toast.show { transform: none; }
+  .overlay-panel { width: 100%; top: 52px; height: calc(100vh - 52px); }
+  .overlay-panel.history-panel,
+  .overlay-panel.export-panel,
+  .overlay-panel.lang-panel,
+  .overlay-panel.tools-panel { width: 65%; min-width: 240px; border-radius: 12px 0 0 0; }
+
+  .chat-panel { display: none; }
+
+  .mobile-chat-fab {
+    display: none !important;
+    align-items: center; justify-content: center;
+    position: fixed; bottom: 24px; left: 12px; z-index: 150;
+    width: 50px; height: 50px; border-radius: 50%;
+    background: var(--nav-bg, #061526); border: 2px solid var(--mech-bright, #06B6D4);
+    box-shadow: 0 0 14px var(--mech-glow, rgba(6,182,212,0.4)), 0 4px 12px rgba(0,0,0,0.3);
+    cursor: pointer; font-size: 24px; line-height: 1;
+    transition: transform 0.2s, box-shadow 0.2s;
+    overflow: hidden;
+  }
+  .chat-fab-shark { width: 32px; height: 32px; object-fit: contain; }
+  .mobile-chat-fab:hover, .mobile-chat-fab:active {
+    transform: scale(1.1);
+    box-shadow: 0 0 22px var(--mech-glow, rgba(6,182,212,0.4)), 0 6px 16px rgba(0,0,0,0.4);
+  }
+  .mobile-export-fab {
+    display: none !important;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--nav-bg, #061526); border: 2px solid var(--mech-bright, #06B6D4);
+    box-shadow: 0 0 14px var(--mech-glow, rgba(6,182,212,0.4)), 0 4px 12px rgba(0,0,0,0.3);
+    cursor: pointer; color: var(--mech-bright, #06B6D4);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .mobile-export-fab:hover, .mobile-export-fab:active {
+    transform: scale(1.1);
+    box-shadow: 0 0 22px var(--mech-glow, rgba(6,182,212,0.4)), 0 6px 16px rgba(0,0,0,0.4);
+  }
+  .export-tab-btn { display: flex; margin-left: auto; }
+  .lang-group { display: none !important; }
+  .mobile-lang-globe { display: none; }
+  .lang-bar { display: none !important; }
+
+  /* ── Mobile home: hide FABs before video loads ── */
+  body:not(.results-visible) .mobile-chat-fab,
+  body:not(.results-visible) .mobile-export-fab { display: none !important; }
+
+  .mobile-chat-backdrop {
+    position: fixed; inset: 0; z-index: 190;
+    background: rgba(0,0,0,0.4);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .mobile-chat-backdrop.open { opacity: 1; pointer-events: all; }
+
+  /* Mobile chat overlay: two states — hidden (off-screen) and open (full
+     viewport width, 66dvh tall, pinned to bottom with rounded top). The
+     previous "fullscreen" modifier was always applied whenever the overlay
+     opened, so its sizing is now the default. */
+  .mobile-chat-overlay {
+    display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+    width: 100%;
+    height: 66vh;
+    height: 66dvh;
+    flex-direction: column;
+    background: var(--surface2, #0D2535);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.3);
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    transform: translateY(100%);
+    pointer-events: none;
+  }
+  .mobile-chat-overlay.open { transform: translateY(0); pointer-events: all; }
+  .mobile-chat-overlay .chat-panel-mobile {
+    display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0;
+  }
+  .mobile-chat-overlay .chat-panel-mobile .chat-panel {
+    flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .mobile-chat-overlay .chat-panel-mobile .chat-messages {
+    flex: 1; min-height: 0;
+  }
+  /* Close button and drag handle were only shown in the old non-fullscreen
+     mode, which no longer exists. The elements stay in the DOM because the
+     close button still has a click handler wired up (click-handlers.js),
+     but they are visually hidden. Close via backdrop tap (mobile-chat.js). */
+  .mobile-chat-close,
+  .mobile-chat-handle { display: none; }
+
+  /* Page scroll lock while mobile chat is open. Pure-CSS approach, chosen
+     after two alternatives failed on iOS Safari:
+       1. position:fixed on body — broke textarea focus and the on-screen
+          keyboard (iOS cannot reliably focus inputs inside a fixed ancestor).
+       2. document-level touchmove preventDefault — suppressed the synthetic
+          click that iOS dispatches after a tap, so tapping the textarea
+          also failed to open the keyboard.
+     The fix: freeze html+body with overflow:hidden + overscroll-behavior:none
+     so neither the document nor its rubber-band bounce can move; let the
+     chat overlay's internal .chat-messages own its own scroll via
+     overscroll-behavior:contain so scroll chaining never reaches the page. */
+  html.mobile-chat-open,
+  body.mobile-chat-open {
+    overflow: hidden;
+    height: 100%;
+    overscroll-behavior: none;
+  }
+  /* Internal chat scroll: keep its own scroll contained so it doesn't chain
+     to html/body (belt-and-suspenders with the lock above). */
+  .mobile-chat-overlay .chat-messages {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+}

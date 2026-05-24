@@ -1,0 +1,317 @@
+/* ══════════════════════════════════════════════════════════
+   chapters.css — Chapter list, chapter tab, bilingual subs
+   Extracted from dashboard.css for crossfade isolation
+   ══════════════════════════════════════════════════════════
+   font-system: hardcoded font-family declarations are intentional:
+     1. .chapter-num — JetBrains Mono (Latin numerals "1.", "2.")
+        with var(--font-i18n) tail for localized digits in non-Latin
+        scripts. See script-disambiguation block in dashboard.css.
+     2. Brutalist .chapter-num — Unbounded + var(--font-i18n) for
+        the brutalist signature on chapter numbers.
+
+   .chapter-name uses cascade (no explicit font-family), inherits body's
+   var(--font-content-body). Bilingual sub uses var(--font-content-heading).
+   Per-language layout tweaks (line-height, font-size for section labels)
+   in the lang-XX block; font face from cascade.
+
+   See docs/_tech/13_LANGUAGE_AND_FONTS.md.
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Base ── */
+.chapters-block { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.chapters-header { padding: 10px 12px 6px; display: flex; align-items: center; flex-shrink: 0; }
+
+/* ── Double-buffer display host ──
+   Each .cs-display contains its own .chapters-header + .chapters-list so
+   header label and list items crossfade together as one unit. */
+.chapters-display-host { position: relative; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.cs-display { display: flex; flex-direction: column; min-height: 0; }
+.cs-display-active { position: relative; z-index: 2; flex: 1; }
+.cs-display-standby { position: absolute; inset: 0; opacity: 0; pointer-events: none; z-index: 1; }
+
+.chapters-list { flex: 1; overflow-y: auto; padding: 6px 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; min-height: 0; }
+.chapters-list::-webkit-scrollbar { width: 3px; }
+.chapters-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.chapter-item { display: grid; grid-template-columns: auto 1fr; gap: 4px 9px; padding: 5px 12px; cursor: pointer; transition: color 0.15s; border-left: 3px solid transparent; align-items: start; }
+/* Hover only on devices with real hover AND desktop-width viewport. The
+   `(hover: hover)` gate alone wasn't enough — some mobile browsers report
+   hover-capable when paired with a stylus/keyboard, and iOS Safari can
+   apply a sticky :hover after tap that triggers this rule even on a
+   touch-only device. Adding `(min-width: 901px)` ensures the recolor only
+   ever fires on the desktop layout, where the cream bg has enough
+   contrast for the accent color to remain readable. On mobile the rule
+   was making chapter text "disappear" because the recolor on cream =
+   near-invisible on the brutalist palette. */
+@media (hover: hover) and (min-width: 901px) {
+  .chapter-item:hover .chapter-name { color: var(--accent); }
+}
+.chapter-item.active { background: var(--accent-light); border-left-color: var(--accent); }
+.chapter-num { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--text-muted); font-weight: 500; flex-shrink: 0; width: 22px; }
+.chapter-item.active .chapter-num { color: var(--accent); }
+.chapter-name { font-size: 15px; font-weight: 500; color: var(--text-secondary); line-height: 1.4; flex: 1; min-width: 0; }
+.chapter-item.active .chapter-name { color: var(--accent); font-weight: 600; }
+
+/* ── Tab visibility (desktop: hidden, mobile overrides below) ── */
+.tab-btn-chapters { display: none; }
+#tab-chapters { display: none; }
+
+/* ── RTL (global — mobile #chaptersTabList only; desktop uses per-panel .cs-display.rtl for crossfade isolation) ── */
+#resultsView.rtl #chaptersTabList .chapter-name,
+#resultsView.rtl #chaptersTabList .chapter-num { direction: rtl; text-align: right; }
+#resultsView.rtl #chaptersTabList .chapter-item { direction: rtl; border-left: none; border-right: 3px solid transparent; }
+#resultsView.rtl #chaptersTabList .chapter-item.active { border-right-color: var(--accent); }
+#resultsView.rtl #chaptersTabList .chapter-num { text-align: right; }
+
+/* ── RTL (per-display — for crossfade isolation; header + list flip together) ── */
+.cs-display.rtl .chapters-header { direction: rtl; }
+.cs-display.rtl .chapter-name,
+.cs-display.rtl .chapter-num { direction: rtl; text-align: right; }
+.cs-display.rtl .chapter-item { direction: rtl; border-left: none; border-right: 3px solid transparent; }
+.cs-display.rtl .chapter-item.active { border-right-color: var(--accent); }
+.cs-display.rtl .chapter-num { text-align: right; }
+
+/* ── Non-Latin script layout tweaks (Persian / Arabic / Hebrew) ──
+   Font face from --font-i18n cascade + script-disambiguation rules in
+   dashboard.css. Only the layout tweaks (line-height, label sizing) live
+   here. Mobile (#chaptersTabList) uses global scope; desktop uses
+   per-panel .cs-display.lang-XX so header + items crossfade as one. */
+#resultsView.lang-fa #chaptersTabList .chapter-num,
+#resultsView.lang-ar #chaptersTabList .chapter-num,
+#resultsView.lang-he #chaptersTabList .chapter-num,
+.cs-display.lang-fa .chapter-num,
+.cs-display.lang-ar .chapter-num,
+.cs-display.lang-he .chapter-num { line-height: 1.75; }
+#resultsView.lang-fa #chaptersTabList .chapter-name,
+#resultsView.lang-ar #chaptersTabList .chapter-name,
+#resultsView.lang-he #chaptersTabList .chapter-name,
+.cs-display.lang-fa .chapter-name,
+.cs-display.lang-ar .chapter-name,
+.cs-display.lang-he .chapter-name { line-height: 1.5; }
+.cs-display.lang-fa .chapters-header .section-label,
+.cs-display.lang-ar .chapters-header .section-label,
+.cs-display.lang-he .chapters-header .section-label { font-size: 14px; font-weight: 600; line-height: 1.6; letter-spacing: 0; text-transform: none; }
+
+/* ── Chapter bilingual subs ── */
+.chapter-item > .bilingual-sub {
+  font-family: var(--font-content-heading);
+  font-size: 12.5px;
+  padding-left: 31px;
+  margin: -2px 0 2px;
+  grid-column: 1 / -1;
+}
+.chapters-list > .bilingual-sub,
+.chapter-item > .bilingual-sub {
+  font-family: var(--font-content-heading);
+  font-size: 12.5px;
+  padding-left: 40px;
+  margin: -2px 0 4px;
+}
+
+/* RTL chapter bilingual sub direction/line-height. Font face from cascade. */
+body[data-translate-lang="fa"] .chapters-list > .bilingual-sub,
+body[data-translate-lang="fa"] .chapter-item > .bilingual-sub,
+body[data-translate-lang="ar"] .chapters-list > .bilingual-sub,
+body[data-translate-lang="ar"] .chapter-item > .bilingual-sub,
+body[data-translate-lang="he"] .chapters-list > .bilingual-sub,
+body[data-translate-lang="he"] .chapter-item > .bilingual-sub { direction: rtl; text-align: right; line-height: 1.75; }
+body[data-translate-lang="ur"] .chapters-list > .bilingual-sub,
+body[data-translate-lang="ur"] .chapter-item > .bilingual-sub { direction: rtl; text-align: right; }
+
+/* ── RTL chapter column swap (switched mode) ── */
+body.bilingual-mode-switched[data-translate-lang="fa"] .chapters-list,
+body.bilingual-mode-switched[data-translate-lang="ar"] .chapters-list,
+body.bilingual-mode-switched[data-translate-lang="he"] .chapters-list,
+body.bilingual-mode-switched[data-translate-lang="ur"] .chapters-list { direction: rtl; }
+body.bilingual-mode-switched[data-translate-lang="fa"] .chapters-list .chapter-item,
+body.bilingual-mode-switched[data-translate-lang="ar"] .chapters-list .chapter-item,
+body.bilingual-mode-switched[data-translate-lang="he"] .chapters-list .chapter-item,
+body.bilingual-mode-switched[data-translate-lang="ur"] .chapters-list .chapter-item { direction: rtl; }
+
+/* ── RTL chapter subs: flip padding direction ── */
+body[data-translate-lang="fa"] .chapters-list > .bilingual-sub,
+body[data-translate-lang="fa"] .chapter-item > .bilingual-sub,
+body[data-translate-lang="ar"] .chapters-list > .bilingual-sub,
+body[data-translate-lang="ar"] .chapter-item > .bilingual-sub,
+body[data-translate-lang="he"] .chapters-list > .bilingual-sub,
+body[data-translate-lang="he"] .chapter-item > .bilingual-sub,
+body[data-translate-lang="ur"] .chapters-list > .bilingual-sub,
+body[data-translate-lang="ur"] .chapter-item > .bilingual-sub { padding-left: 0; padding-right: 40px; }
+
+/* ── Switched mode: chapter-name RTL ── */
+/* Switched-mode RTL chapter-name direction/line-height. */
+body.bilingual-mode-switched[data-translate-lang="fa"] .chapter-name,
+body.bilingual-mode-switched[data-translate-lang="ar"] .chapter-name,
+body.bilingual-mode-switched[data-translate-lang="he"] .chapter-name { direction: rtl; text-align: right; line-height: 1.75; }
+
+/* ── Switched mode: chapter subs reset to LTR ── */
+body.bilingual-mode-switched[data-translate-lang="fa"] .chapters-list > .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="fa"] .chapter-item > .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="ar"] .chapters-list > .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="ar"] .chapter-item > .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="he"] .chapters-list > .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="he"] .chapter-item > .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="ur"] .chapters-list > .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="ur"] .chapter-item > .bilingual-sub { direction: ltr; text-align: left; font-family: var(--font-content-heading); padding-left: 40px; padding-right: 0; }
+
+/* ══════════════════════════════════════════════════════════
+   Mobile (≤ 900px)
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .chapters-block { display: none; }
+  .tab-btn-chapters { display: flex; }
+  #tab-chapters.active {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .chapters-list-mobile {
+    /* Fill the bounded pane; scroll internally when content exceeds height. */
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    /* 2-column row-major grid (Apple-style menu list, e.g. Settings on
+       iPad in landscape). Items flow 1,2 → 3,4 → 5,… left-to-right,
+       top-to-bottom — predictable pairing instead of CSS multi-column's
+       balance-with-break-inside-avoid awkwardness. With the line-clamp
+       on .chapter-name (max 2 lines) row heights stay uniform-enough
+       that adjacent items within a row don't show ugly internal gaps.
+       align-content: safe center centers the whole grid vertically when
+       the list is shorter than the panel (no more half-empty bottom),
+       and falls back to top-pack on overflow so long lists scroll
+       naturally from the top. align-items: start keeps each item at
+       the top of its row when row heights vary slightly. */
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 14px;
+    align-content: safe center;
+    align-items: start;
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    /* margin-top:12px aligns with summary's panel and the transcript tab's
+       first-paragraph position so all four tabs start at the same vertical
+       line. See summary.css for the full reasoning. */
+    margin: 12px 14px 14px;
+  }
+  .chapters-list-mobile .chapter-item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 9px;
+    cursor: pointer;
+    break-inside: avoid;
+    padding: 4px 0;
+    margin-bottom: 2px;
+    border-left: none !important;
+    transition: color 0.15s;
+  }
+  /* No :hover for mobile chapter list — touch devices get a sticky :hover
+     after tap. The .active class handles the post-tap state instead. */
+  .chapters-list-mobile .chapter-item.active { background: var(--accent-light); }
+  /* Pre-arrival placeholder chapters. Reuses the real .chapter-item layout
+     (so the blurred silhouette matches what's coming) but disables interaction
+     via .chapter-item-placeholder. The body.rewind-mobile-menus blur on
+     .tab-content makes the placeholder text indecipherable during the VHS
+     rewind — only the numbered-list typography shows through, which is the
+     correct "chapters loading" read. Replaced when real chapters render. */
+  .chapters-list-mobile .chapter-item-placeholder {
+    pointer-events: none;
+    user-select: none;
+  }
+  .chapters-list-mobile .chapter-name {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    line-height: 1.3;
+    /* Allow long compound words ("Cross-Dressing") and possessive phrases
+       to break cleanly inside the narrow ~half-viewport columns. Without
+       this, hyphenated tokens stay glued and force awkward 4-line wraps. */
+    overflow-wrap: anywhere;
+    /* Cap to 2 lines with ellipsis. Keeps row heights uniform across the
+       2-column grid so a 5-line title next to a 1-line title doesn't
+       create a tall row with an empty gap below the short item. Long
+       titles still convey their topic from the first 2 lines; full text
+       is in the transcript anyway. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .chapters-list-mobile .chapter-item.active .chapter-name { color: var(--accent); font-weight: 600; }
+  .chapters-list-mobile .chapter-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    width: 22px;
+  }
+  .chapters-list-mobile .chapter-item.active .chapter-num { color: var(--accent); }
+  .chapters-list-mobile .chapter-item > .bilingual-sub:not(.bilingual-sub-hidden) {
+    font-size: 10px;
+    padding-left: 22px;
+    margin: 0 0 2px;
+    opacity: 0.7;
+    line-height: 1.3;
+  }
+  /* RTL: reverse 2-column flow so the first 5 chapters land on the right
+     column (matches reading order for fa/ar/he/ur). CSS multi-column with
+     `direction: rtl` flips the per-column box order — chapter-items inside
+     already get their own direction from #resultsView.rtl rules above. */
+  #resultsView.rtl .chapters-list-mobile { direction: rtl; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   Brutalist theme
+   ══════════════════════════════════════════════════════════ */
+body.theme-brutalist .chapters-block {
+  background: #1E3351;
+}
+body.theme-brutalist .chapters-block .bilingual-sub {
+  color: #8BB8CC;
+}
+body.theme-brutalist .chapters-block .chapter-name,
+body.theme-brutalist .chapters-block .chapter-num,
+body.theme-brutalist .chapters-block .section-label { color: #C8D8DC; }
+body.theme-brutalist .chapters-block .chapter-item.active .chapter-name,
+body.theme-brutalist .chapters-block .chapter-item.active .chapter-num { color: #FFD100; }
+body.theme-brutalist .chapters-header {
+  border-bottom: 1px solid #E0D9CC;
+}
+body.theme-brutalist .chapter-item {
+  border-left: 4px solid transparent;
+  transition: color 0.15s;
+}
+/* Same gate as the generic .chapter-item:hover rule above — desktop
+   width AND real hover capability. On mobile this would recolor the
+   chapter text to white on the cream bg = invisible. */
+@media (hover: hover) and (min-width: 901px) {
+  body.theme-brutalist .chapter-item:hover .chapter-name { color: #fff; }
+}
+body.theme-brutalist .chapter-item.active {
+  background: transparent;
+  border-left-color: #FFD100;
+}
+body.theme-brutalist .chapter-num {
+  /* font-family kept as Unbounded for visual brutalist character on
+     Latin chapter numbers ("1.", "2."). For Persian/Arabic numerals
+     in localized chapters, the script-disambiguation rules in
+     dashboard.css force the right script font. */
+  font-family: 'Unbounded', var(--font-i18n);
+  font-weight: 900;
+  font-size: 13px;
+}
+body.theme-brutalist .chapter-item.active .chapter-num { color: #FFD100; }
+body.theme-brutalist .chapter-name {
+  /* font-family from theme-level --font-content-body redefinition (Syne). */
+  font-weight: 600;
+  font-size: 14px;
+}
+body.theme-brutalist .chapter-item.active .chapter-name {
+  color: #FFD100;
+}
+
+/* ── Brutalist scrollbar ── */
+body.theme-brutalist .chapters-list { scrollbar-width: none; }

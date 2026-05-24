@@ -1,0 +1,2938 @@
+/* ═══════════════════════════════════════════════════════════
+   font-system: intentional hardcoded font-family declarations in this file
+   ═══════════════════════════════════════════════════════════
+   This file owns the role tokens (--font-content-* / --font-brand-* /
+   --font-i18n / --font-mono) AND has hardcoded font-family declarations
+   on UI/brand selectors that are intentionally Latin-display-only and
+   should NOT be migrated to var(--font-content-*). Categories:
+
+     1. Brand UI (nav, paste button, user avatar, app brand label) —
+        Unbounded, Syne, Space Grotesk. Static UI text, never localized.
+     2. Mech panel + transport controls (mech-status-label, mech-time,
+        mech-cc-btn, vc-time-pill, etc.) — JetBrains Mono / Space Grotesk.
+        Latin-only by design (timestamps, status text).
+     3. Now-watching bar (nw-time-pill, nw-cc-btn) — same as mech.
+     4. Brutalist theme overrides on UI/brand elements — Unbounded /
+        Syne / Bebas Neue / JetBrains Mono. Brutalist aesthetic.
+     5. Mono-only elements (chat-ts, scrubber-time, bm-ts, chapter-num
+        timestamps) — JetBrains Mono / Bebas Neue. Latin numerals/code
+        formatting by design.
+     6. Static UI labels (chat-title, chat-empty-text, chat-hint,
+        btn-send, btn-clear-input, chat-online, mech-status-label) —
+        English-only by current design.
+     7. Per-language script disambiguation block at end of file —
+        intentional override for ar/ja/zh-tw/ko (see disambiguation
+        section header).
+     8. Per-language brutalist chat-chip overrides (lines ~3656-3666) —
+        existing rules with !important that pin the right script font
+        for fa/ar/he chips. Redundant with cascade but functionally
+        correct; left as-is to avoid touching working code.
+
+   ANY rule on a USER-CONTENT selector (.ts-text, .summary-quick-text,
+   .chapter-name, .chat-bubble, .chat-input, .chat-chip, .vtag,
+   .video-title-text, .bm-note, .lang-search input, etc.) MUST use a
+   role var (var(--font-content-body / -heading / -chat / -mono)). If
+   you're tempted to add a hardcoded font-family on one of those, stop
+   and use the role var instead. Theme variation = redefine the role var
+   at body.theme-X, not per-element override.
+
+   See docs/_tech/13_LANGUAGE_AND_FONTS.md for the full architecture.
+   ═══════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* iOS Safari status bar tint: ensures a consistent shell-colored top bar
+   regardless of the page's visible bg. Uses --nav-bg so the backdrop
+   tracks the active theme (brutalist stays #0C1E2A; other themes use
+   their own shell colors). */
+html { background: var(--nav-bg); height: 100%; overflow: hidden; }
+
+/* Dark strip pinned to the top of the viewport, behind iOS status bar.
+   Only visible in the safe-area inset (the notch/status bar region),
+   since page content flows below it. */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--nav-bg);
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* Mirror of body::before for the bottom of the viewport. Gives iOS Safari's
+   adaptive URL bar chrome a stable dark backdrop to sample, so the chrome
+   color doesn't flip between landing (light bg) and video page (dark bg)
+   during morph. Sized to safe-area-inset-bottom (home indicator area). */
+body::after {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-bottom, 0px);
+  background: var(--nav-bg);
+  z-index: 9999;
+  pointer-events: none;
+}
+
+:root {
+  --bg: #EFF9FB;
+  --surface: #F8FCFF;
+  --border: #A5E5F0;
+  --text-primary: #0C1E2A;
+  --text-secondary: #2A5A70;
+  --text-muted: #7AAFC0;
+  --accent: #0891B2;
+  --accent-light: #C8EEF5;
+  --accent-hover: #0E7490;
+  --nav-bg: #061526;
+  --nav-text: #F9FAFB;
+  --nav-muted: #5ABCD4;
+  --chip-bg: #C8EEF5;
+  --chip-text: #0891B2;
+  --separator: #0D2E4A;
+  --accent2: #5B6E8A;
+  --accent2-light: #EDF1F5;
+  --surface2: #0D2535;
+  --casual-accent: #DC2626;
+  --casual-light: #FEF2F2;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.1);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.15);
+  --vc-bg: #0F1923;
+  --vc-border: #1F2937;
+  --vc-text: #9CA3AF;
+  --vc-text-bright: #E5E7EB;
+  --vc-cc-bg: #1F2937;
+  --vc-cc-border: #374151;
+
+  /* ─── Design tokens (modern/soft defaults — every theme inherits these
+     unless it explicitly overrides them in themes.js). Brutalist replaces
+     them with sharp/chunky values to get its signature look without needing
+     body.theme-brutalist overrides in individual CSS rules. ─── */
+
+  /* ═══════════════════════════════════════════════════════════
+     Font system — see docs/logs/font-system-plan-v2.1.md
+
+     Two categories of font tokens:
+
+       --font-content-*  — safe for ANY user/translated/generated text.
+                           Stack ends in --font-i18n so non-Latin glyphs
+                           (Persian, Arabic, CJK, Devanagari, Thai, etc.)
+                           auto-fall through to the right script font via
+                           browser per-codepoint cascade. Use these on
+                           transcript, summary, chapters, chat, title,
+                           video metadata, search input, bookmarks.
+
+       --font-brand-*    — intentionally Latin/display-only. NEVER put on
+                           an element that holds user content — non-Latin
+                           glyphs will fall to system ugly. Use only on
+                           hero word, paste button, navigation, app brand
+                           labels, and other static UI chrome.
+
+     Per-script disambiguation (Arabic vs Persian, JP vs SC, TC vs SC) is
+     handled by explicit per-language rules in the "Font system: script
+     disambiguation" section below — the cascade alone can't pick the
+     right script font when languages share a Unicode block.
+     ═══════════════════════════════════════════════════════════ */
+
+  /* The i18n fallback tail. Browser uses first-match-per-codepoint:
+     whichever font's @font-face unicode-range contains the codepoint wins
+     for that codepoint. This chain is codepoint fallback only, NOT
+     language-aware routing — see the disambiguation section for the rules
+     that override it for ar/ja/zh-tw/ko-tagged containers. */
+  --font-i18n: 'Vazirmatn', 'Noto Sans Arabic', 'Noto Sans Hebrew',
+               'Noto Sans SC', 'Noto Sans TC', 'Noto Sans JP', 'Noto Sans KR',
+               'Noto Sans Devanagari', 'Noto Sans Bengali', 'Noto Sans Tamil',
+               'Noto Sans Telugu', 'Noto Sans Gujarati', 'Noto Sans Kannada',
+               'Noto Sans Malayalam', 'Noto Sans Gurmukhi', 'Noto Sans Sinhala',
+               'Noto Sans Thai', 'Noto Sans Lao', 'Noto Sans Khmer',
+               'Noto Sans Myanmar', 'Noto Sans Ethiopic', 'Noto Sans Armenian',
+               'Noto Sans Georgian', sans-serif;
+
+  /* Content roles — safe for mixed-script user content. */
+  --font-content-body:    'Inter', var(--font-i18n);
+  --font-content-heading: 'Space Grotesk', var(--font-i18n);
+  --font-content-chat:    'Poppins', 'Inter', var(--font-i18n);
+
+  /* Transcript / subtitle weight. Two values because Latin (Inter) and
+     dense scripts (Vazirmatn / Noto Sans Arabic / CJK / Devanagari etc.)
+     render visibly different at the SAME numeric weight — Latin needs
+     a higher value to read with equivalent presence. This is applied
+     globally (same in single + dual mode) so English looks identical
+     wherever it appears. */
+  --font-weight-transcript-latin: 550;
+  --font-weight-transcript-dense: 500;
+
+  /* Brand/UI roles — Latin display only. Do NOT use on user content. */
+  --font-brand-display:   'Unbounded', sans-serif;
+  --font-brand-soft:      'Syne', sans-serif;
+  --font-brand-condensed: 'Bebas Neue', sans-serif;
+
+  /* Mono — timestamps / code only. Latin-only by design. */
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Legacy names retained as aliases of the role tokens above. Existing
+     CSS already uses these via var(--font-body) etc.; aliasing keeps that
+     working without a forced rename of every consumer. */
+  --font-heading: var(--font-content-heading);
+  --font-body:    var(--font-content-body);
+  --font-display: var(--font-brand-condensed);
+
+  /* Border widths */
+  --border-width: 1px;
+  --border-width-thick: 2px;
+
+  /* Heading styling knobs — brutalist uppercases and tracks letters; modern
+     themes leave them as-is. */
+  --heading-weight: 600;
+  --heading-case: none;
+  --heading-letter-spacing: normal;
+
+  /* "Warm" + "pop" accent slots — the yellow and coral highlights that
+     brutalist uses distinctly from --accent / --accent2. Each theme in
+     themes.js defines its own values; these :root values are fallbacks. */
+  --highlight-warm: #F59E0B;
+  --highlight-pop:  #EC4899;
+
+  /* ─── Entity-highlight palette (.tx-* classes from entity-highlighter.js).
+     These are the canonical defaults for the TRANSCRIPT context. Other
+     contexts (chat-bubble, chat-chip, bubble-user, mobile-chat-overlay
+     bubble, brutalist desktop chat) currently override via hardcoded
+     values further down in this file — see "tx-* layered system" comment
+     in src/css/transcript.css. Made explicit on :root 2026-05-08
+     (Phase 3 B5) so the token chain is no longer hidden inside the
+     `var(--tx-*-color, #fallback)` pattern at the rule sites. ─── */
+  --tx-date-color:      #C2410C;
+  --tx-num-color:       #15803D;
+  --tx-name-color:      #7C3AED;
+  --tx-org-color:       #1D4ED8;
+  --tx-gpe-color:       #0E7490;
+  --tx-event-color:     #4338CA;
+  --tx-stretch-color:   #DB2777;
+  --tx-discourse-color: #0EA5E9;
+  --tx-exclaim-color:   #DC2626;
+  --tx-punct-color:     #A16207;
+  --tx-bracket-color:   #738F66;
+
+  /* ─── Mech Chassis Panel — defaults, overridden by themes.js per theme.
+     Body-class overrides for casual-mode + brutalist live just below.
+     Consolidated here from src/css/home.css 2026-05-08 (Phase 3 B1). ─── */
+  --mech-accent: #0891B2;
+  --mech-bright: #06B6D4;
+  --mech-glow:   rgba(6,182,212,0.4);
+  --mech-dim:    #1E2D3D;
+  --mech-icon:   #7AAFC0;
+  --mech-text:   #6B8595;
+  --mech-sep:    #2A3A50;
+
+  /* ─── Karaoke active-word highlight tunables — read by karaoke-wave.js
+     wave loop (only --karaoke-radius-sec) and by .k-ch.lit rules in
+     src/css/karaoke.css. Consolidated here from src/css/karaoke.css
+     2026-05-08 (Phase 3 B1). Override in any theme block to customize.
+     --karaoke-glow-color  : halo + scaled-letter color
+     --karaoke-scale       : peak letter scale-up at the wave's center
+     --karaoke-radius-sec  : wave half-width in seconds (read by JS) ─── */
+  --karaoke-glow-color: var(--highlight-karaoke, var(--accent));
+  --karaoke-scale:      0.20;
+  --karaoke-radius-sec: 0.45;
+}
+
+/* Mech-chassis body-class overrides (casual + brutalist).
+   Consolidated here from src/css/home.css 2026-05-08 (Phase 3 B1). */
+body.casual-mode {
+  --mech-accent: #DC2626;
+  --mech-bright: #F87171;
+  --mech-glow:   rgba(220,38,38,0.4);
+  --mech-dim:    #7F1D1D;
+  --mech-icon:   #F87171;
+  --mech-text:   #8B4545;
+  --mech-sep:    #5A2020;
+}
+body.theme-brutalist {
+  --mech-accent: #FFD100;
+  --mech-bright: #FFD100;
+  --mech-glow:   rgba(255,209,0,0.25);
+  --mech-dim:    #1A3040;
+  --mech-icon:   #5ABCD4;
+  --mech-text:   #5ABCD4;
+  --mech-sep:    #1E3448;
+}
+
+
+
+
+body {
+  font-family: var(--font-content-body, 'Inter', sans-serif);
+  /* Dark on body so iOS 26 Safari tints the status bar dark consistently
+     (Safari 26 dropped theme-color, now uses body bg). .home-view and video
+     page views paint their own bg on top, so this only shows through in the
+     safe-area/status-bar region. Uses --nav-bg so it tracks active theme. */
+  background: var(--nav-bg);
+  color: var(--text-primary);
+  /* 100dvh tracks the visual viewport — iOS Safari's URL bar collapse no
+     longer produces layout jumps vs the legacy 100vh. Supported: Safari
+     15.4+, Chrome 108+, Firefox 101+. */
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* NAVBAR */
+nav {
+  background: var(--nav-bg);
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 8px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 500;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.nav-brand img { height: 22px; width: auto; }
+.nav-brand .nav-sharky { height: 26px; filter: none; margin-right: 4px; }
+.nav-brand .logo-recap { filter: brightness(0) invert(1) opacity(0.9); margin-right: 0; }
+.nav-brand .logo-com { filter: brightness(0) invert(1) opacity(0.9); margin-left: 0; }
+
+.nav-divider {
+  width: 1px; height: 20px;
+  background: #374151;
+  flex-shrink: 0;
+  margin: 0 4px;
+}
+
+.nav-slogan {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #6B7280;
+  flex-shrink: 0;
+  transform: translateY(3px);
+}
+
+/* .nav-spacer is hidden everywhere (its History / A-/A+ / Casual buttons
+   moved to .nav-mobile-right + the now-watching bar). The single hide rule
+   lives below near .nav-paste-btn. Empty rule removed 2026-05-08 (Phase 3 B2). */
+
+.nav-icon-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid #374151;
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  color: #9CA3AF;
+  font-size: 12px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.nav-icon-btn:hover:not(.nav-chat-btn-m) { background: #1F2937; color: #F3F4F6; border-color: #4B5563; }
+.nav-icon-btn svg { width: 13px; height: 13px; }
+.nav-icon-btn.active { background: #1F2937; color: var(--nav-text); border-color: #374151; }
+
+.tab-action-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px; font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer; transition: all 0.15s;
+  white-space: nowrap;
+}
+.tab-action-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.tab-action-btn.tab-btn-bookmarks { border: none; margin-left: auto; }
+
+.btn-paste {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #F9FAFB;
+  color: #111827;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 7px 13px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.btn-paste:hover { background: #E5E7EB; }
+.btn-paste svg { width: 13px; height: 13px; }
+.btn-paste-hint { font-size: 10px; font-weight: 500; color: #6B7280; }
+
+.font-size-ctrl {
+  display: flex; align-items: center; gap: 0;
+  border: 1px solid #1F2937; border-radius: var(--radius-sm); overflow: hidden;
+}
+.font-size-ctrl .font-btn {
+  border: none; border-radius: 0; padding: 6px 10px;
+  font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700;
+}
+.font-size-ctrl .font-btn:first-child { border-right: 1px solid #1F2937; }
+.font-size-ctrl .font-btn:hover { background: #1F2937; }
+
+.btn-theme {
+  background: transparent; border: 1px solid #374151; border-radius: var(--radius-sm);
+  padding: 5px 9px; color: #9CA3AF; font-size: 14px; cursor: pointer;
+  transition: all 0.15s; line-height: 1; flex-shrink: 0;
+}
+.btn-theme:hover { background: #1F2937; color: #F9FAFB; }
+
+/* NOW WATCHING BAR */
+.now-watching-bar {
+  background: #0A2F4A;
+  padding: 0 16px;
+  height: 38px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  overflow: visible;
+  align-items: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 501;
+}
+.nw-left { display: flex; align-items: center; gap: 10px; overflow: hidden; min-width: 0; }
+.nw-right { display: flex; align-items: center; gap: 3px; margin-left: auto; overflow: hidden; min-width: 0; }
+
+.nw-label {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(8,145,178,0.18);
+  border: 1px solid rgba(8,145,178,0.40);
+  padding: 3px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.nw-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+
+.nw-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #F1F5F9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.nw-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  justify-self: center;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(99,102,241,0.3);
+  padding: 2px 4px;
+  clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 6px 100%, 0 50%);
+}
+.nw-ctrl-btn {
+  background: none;
+  border: none;
+  color: #546E7A;
+  cursor: pointer;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s ease;
+  position: relative;
+}
+.nw-ctrl-btn:hover { color: #E0E0E0; }
+.nw-ctrl-btn:active { color: #60A5FA; transform: scale(0.9); }
+.nw-skip svg { transition: transform .15s ease; }
+.nw-skip:hover svg { transform: translateX(1px); }
+.nw-play-btn {
+  background: #fff;
+  color: #0A2F4A;
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  margin: 0 1px;
+  clip-path: polygon(4px 0, calc(100% - 4px) 0, 100% 50%, calc(100% - 4px) 100%, 4px 100%, 0 50%);
+  transition: all .15s ease;
+  box-shadow: none;
+}
+.nw-play-btn:hover {
+  background: #60A5FA;
+  color: #fff;
+}
+.nw-play-btn:active { transform: scale(0.92); }
+.nw-play-btn .nw-play-icon { filter: none; }
+.nw-time-pill {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  margin-left: 4px;
+  padding: 2px 6px;
+  letter-spacing: 0.5px;
+  background: none;
+  border: none;
+}
+.nw-time-current { color: #fff; font-weight: 700; }
+.nw-time-sep { color: #2A3A50; font-weight: 400; }
+.nw-time-total { color: #4A6070; font-weight: 500; }
+.nw-cc-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  background: none;
+  border: 1px solid #2A3A50;
+  color: #546E7A;
+  padding: 2px 7px;
+  margin-left: 2px;
+  cursor: pointer;
+  transition: all .15s ease;
+  clip-path: polygon(3px 0, calc(100% - 3px) 0, 100% 50%, calc(100% - 3px) 100%, 3px 100%, 0 50%);
+}
+.nw-cc-btn:hover { border-color: #EE5E48; color: #EE5E48; }
+.nw-cc-btn.on { background: rgba(238,94,72,0.15); color: #EE5E48; border-color: #EE5E48; box-shadow: 0 0 8px rgba(238,94,72,0.3); }
+
+.nw-meta {
+  display: none;
+  font-size: 11px;
+  color: #94A3B8;
+  flex-shrink: 0;
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+}
+
+.nw-close {
+  font-size: 11px;
+  color: #6B8A9A;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s;
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid #1F2D3D;
+  background: none;
+  letter-spacing: 0.3px;
+}
+.nw-close:hover { color: #9CA3AF; border-color: #374151; }
+
+/* USER MENU */
+.user-menu-wrap { position: relative; flex-shrink: 0; }
+.user-avatar-btn {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, #6366F1, #8B5CF6);
+  border: 2px solid #374151; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s;
+}
+.user-avatar-btn:hover { border-color: #8B5CF6; }
+.user-avatar-initials { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700; color: #fff; letter-spacing: 0.5px; }
+.user-dropdown {
+  position: fixed; width: 210px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow-lg); z-index: 10002; overflow: hidden;
+  opacity: 0; pointer-events: none; transform: translateY(-6px);
+  transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
+}
+.user-dropdown.show { opacity: 1; pointer-events: all; transform: translateY(0); }
+.user-dropdown-info { padding: 12px 14px 10px; }
+.user-dropdown-name { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+.user-dropdown-email { font-size: 11px; color: var(--text-muted); }
+.user-dropdown-divider { height: 1px; background: var(--border); margin: 0; }
+.user-dropdown-item {
+  display: flex; align-items: center; gap: 9px; width: 100%; padding: 10px 14px;
+  background: none; border: none; font-family: 'Inter', sans-serif;
+  font-size: 12.5px; font-weight: 500; color: var(--text-secondary);
+  cursor: pointer; transition: background 0.12s; text-align: left;
+}
+.user-dropdown-item:hover { background: var(--bg); color: var(--text-primary); }
+.user-dropdown-item.signout:hover { background: #FEF2F2; color: #DC2626; }
+.user-dropdown-item.signout:hover svg { stroke: #DC2626; }
+
+/* TOAST */
+.toast {
+  display: none; position: absolute; right: 180px; top: 50%; transform: translateY(-50%);
+  font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 700;
+  letter-spacing: 1.2px; border-radius: 20px; padding: 3px 10px; white-space: nowrap;
+  pointer-events: none; z-index: 999;
+  color: #22d3ee; background: #0c1824; border: 1px solid #164e63; border-radius: 8px; font-size: 11px; letter-spacing: 0.8px; padding: 5px 14px;
+}
+.toast.show { display: inline-flex; align-items: center; animation: casualFade 6s ease forwards; }
+.toast.casual { color: #FCA5A5; background: rgba(220,38,38,0.18); border-color: rgba(220,38,38,0.35); }
+
+/* OVERLAY PANELS */
+.overlay-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+  z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.overlay-backdrop.show { opacity: 1; pointer-events: all; z-index: 10004 !important; }
+
+.overlay-panel {
+  position: fixed; top: 90px; right: 0; width: 380px;
+  height: calc(100vh - 90px); background: var(--surface);
+  border-left: 1px solid var(--border); z-index: 10005;
+  display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  -webkit-backface-visibility: hidden; backface-visibility: hidden;
+}
+.overlay-panel.show { transform: translateX(0) !important; pointer-events: auto; }
+.overlay-panel.history-panel { width: 360px; }
+.overlay-panel.export-panel { width: 400px; }
+.overlay-panel.lang-panel { width: 280px; }
+.overlay-panel.tools-panel { width: 320px; }
+
+/* Phase 5c: Privacy link footer in the Tools panel — works on mobile + desktop. */
+.tools-footer {
+  margin-top: auto;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  flex-shrink: 0;
+}
+.tools-privacy-link {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-decoration: none;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.tools-privacy-link:hover { color: var(--accent); text-decoration: underline; }
+
+.overlay-header {
+  padding: 16px 18px 14px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.overlay-title { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.overlay-close { background: none; border: none; font-size: 18px; color: var(--text-muted); cursor: pointer; line-height: 1; padding: 2px 4px; border-radius: 4px; transition: color 0.15s; }
+.overlay-close:hover { color: var(--text-primary); }
+.overlay-body { flex: 1; overflow-y: auto; padding: 16px 18px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+.history-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px; border-radius: var(--radius-sm); cursor: pointer;
+  transition: background 0.12s; margin-bottom: 4px; border: 1px solid transparent;
+}
+.history-item:hover { background: var(--bg); border-color: var(--border); }
+.history-thumb { width: 80px; height: 46px; border-radius: 4px; background: #1F2937; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.history-info { flex: 1; min-width: 0; }
+.history-title { font-size: 12.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+.history-meta { font-size: 11px; color: var(--text-muted); }
+.history-date { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+.export-section { margin-bottom: 20px; }
+.export-section-title { font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
+.export-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 6px; cursor: pointer; transition: all 0.12s; background: var(--surface); }
+.export-option:hover { border-color: var(--accent); background: var(--accent-light); }
+.export-option.selected { border-color: var(--accent); background: var(--accent-light); }
+.export-icon { font-size: 18px; flex-shrink: 0; }
+.export-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.export-desc { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.export-range { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.export-range input { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--bg); color: var(--text-primary); outline: none; }
+.export-range input:focus { border-color: var(--accent); background: #fff; }
+.export-range-label { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+.export-keyword-row { display: flex; gap: 8px; margin-top: 10px; }
+.export-keyword-row input { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: 'Inter', sans-serif; font-size: 12px; background: var(--bg); color: var(--text-primary); outline: none; }
+.export-keyword-row input:focus { border-color: var(--accent); }
+.export-keyword-row input::placeholder { color: var(--text-muted); }
+.btn-export-go { width: 100%; padding: 11px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.15s; margin-top: 16px; }
+.btn-export-go:hover { background: var(--accent-hover); }
+
+.lang-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 6px; cursor: pointer; transition: all 0.12s; }
+.lang-option:hover { border-color: var(--accent); background: var(--accent-light); }
+.lang-option.active { border-color: var(--accent); background: var(--accent-light); }
+/* Source-language row — informative label, not a button. The lang panel
+   shows the video's source language at the top so the user knows what
+   they're translating FROM; it should read as a fact, not a tappable
+   option. Strips the border, hover, active highlight and pointer cursor;
+   pointer-events:none also prevents an accidental tap from registering
+   even though _selectLangOption short-circuits on currentLang. Padding
+   left/right zeroed so it aligns flush with the section labels. */
+.lang-option.lang-option--source,
+.lang-option.lang-option--source:hover,
+.lang-option.lang-option--source.active {
+  border-color: transparent;
+  background: transparent;
+  cursor: default;
+  pointer-events: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+.lang-flag { font-size: 20px; }
+.lang-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.lang-native { font-size: 11px; color: var(--text-muted); font-family: system-ui, -apple-system, sans-serif; }
+/* Native-name font per script. Without these overrides the .lang-native
+   element inherits the parent's Latin sans (Inter / Space Grotesk),
+   which has no glyphs for Arabic / Hebrew / etc. — so the browser
+   falls back to its OWN system Persian font (often the bundled-by-default
+   ugly one) instead of the project's loaded Vazirmatn / Noto fonts.
+   The system-ui base above covers CJK / Cyrillic / Devanagari etc. via
+   the OS font (decent on every modern platform); explicit overrides
+   below pin the loaded webfonts for the scripts we ship typography for.
+
+   Loaded webfonts (see <link> in index.html):
+     - Vazirmatn → Arabic script (Persian, Arabic, Urdu, Pashto, Kurdish)
+     - Noto Sans Hebrew → Hebrew
+
+   Keep this list aligned with the @import in index.html — adding more
+   webfonts here without loading them is a no-op (browser silently
+   falls back). */
+.lang-option[data-lang="fa"] .lang-native,
+.lang-option[data-lang="ar"] .lang-native,
+.lang-option[data-lang="ur"] .lang-native,
+.lang-option[data-lang="ps"] .lang-native,
+.lang-option[data-lang="ku"] .lang-native {
+  font-family: 'Vazirmatn', system-ui, sans-serif;
+}
+.lang-option[data-lang="he"] .lang-native {
+  font-family: 'Noto Sans Hebrew', system-ui, sans-serif;
+}
+.lang-check { margin-left: auto; color: var(--accent); font-size: 14px; }
+.lang-search { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 10px; background: var(--bg); margin-bottom: 14px; }
+.lang-search input { flex: 1; border: none; background: transparent; font-family: var(--font-content-body); font-size: 12.5px; color: var(--text-primary); outline: none; }
+.lang-search input::placeholder { color: var(--text-muted); }
+.lang-section-label { font-size:10px; color:var(--text-muted); font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px; }
+.lang-flag-img { width: 1.2em; height: 0.85em; object-fit: cover; border-radius: 2px; vertical-align: middle; }
+#bilingualSwitchBtn .lang-flag-img { width: 1em; height: 0.7em; }
+/* ── Wavy emoji flags on mobile ──
+   _flagImg() in lang-meta.js emits TWO elements per flag:
+     <span class="lang-flag-emoji">🇺🇸</span><img class="lang-flag-img">
+   Default state (desktop): emoji hidden, PNG visible. The mobile @media
+   block below flips it. Why both? On iOS/Android/Mac, regional-indicator
+   emoji render as wavy flags (matches the design we want). On Windows
+   browsers they fall back to letter pairs ("US", "FR") which would look
+   broken — so desktop sticks with the flagcdn PNGs. Persian is the lone
+   special case: it emits an <img class="lang-flag-iran-emoji"> INSIDE the
+   emoji span (no Pahlavi Lion-and-Sun emoji exists in Unicode), styled
+   below to match the visual size of a regional-indicator glyph. */
+.lang-flag-emoji { display: none; line-height: 1; vertical-align: middle; }
+.lang-flag-iran-emoji { width: 1.2em; height: 0.85em; object-fit: cover; vertical-align: middle; border-radius: 2px; display: inline-block; }
+@media (max-width: 900px) {
+  /* Bump emoji flag size on mobile so the regional-indicator glyphs
+     match the visual size of the wavy Persian PNG (which is rendered
+     at 1.4em × 0.95em, slightly larger than what 1em would produce
+     for emoji). Without this the Persian flag reads as conspicuously
+     bigger than its neighbours inside the same cycle button. */
+  .lang-flag-emoji { display: inline-block; font-size: 1.25em; }
+  .lang-flag-img { display: none; }
+  /* Persian uses a hand-drawn wavy PNG (Pahlavi Lion-and-Sun isn't in
+     Unicode), so the wave is baked into the image — no CSS animation
+     needed. Sized in em so the value is interpreted relative to the
+     parent .lang-flag-emoji's font-size (which we just bumped to 1.25em
+     above to scale up the regional-indicator emoji glyphs); divide the
+     target visual size by 1.25 to keep the Persian flag unchanged at
+     its original 1.4em × 0.95em from the grandparent's perspective.
+     1.4 / 1.25 = 1.12, 0.95 / 1.25 = 0.76. */
+  .lang-flag-iran-emoji {
+    width: 1.12em;
+    height: 0.76em;
+    object-fit: contain;
+  }
+}
+.cross-lang-note { background: var(--accent-light); border: 1px solid #67C8D8; border-radius: var(--radius-sm); padding: 10px 12px; font-size: 11.5px; color: #1D4ED8; line-height: 1.5; margin-top: 14px; }
+
+#resultsView { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+/* During the landing→video morph, paint a contrasting bg behind
+   #resultsView so nav and .now-watching-bar visibly slide in over a
+   non-matching surface. Without this, body bg (= --nav-bg, dark navy) is
+   identical to the panels' own dark bg, so the slide is invisible and the
+   user perceives a "bg snap" the moment the cover lifts. Scoped to
+   body.morphing, which _runStaggeredMorph keeps on for the ENTIRE morph —
+   from the first exit all the way through the final enter's animationend
+   (+100ms buffer) — so the cream backdrop stays in place while the dark
+   panels are still sliding. If morphing were removed at cover-lift
+   (maxExitEnd+50) the backdrop would flip back to dark navy at the exact
+   moment the panels begin entering, restoring the dark-on-dark snap this
+   rule exists to prevent. Outside the transition the final dark body bg
+   is unchanged — important for iOS safe-area tinting via body::before.
+   .dashboard paints its own bg on top, so the inner panel area is
+   unaffected. */
+body.morphing #resultsView { background: var(--bg); }
+
+/* DASHBOARD GRID */
+.dashboard {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 320px 6px 1fr 6px 330px;
+  overflow: hidden;
+  background: var(--panel-gap, var(--bg));
+}
+
+.resize-handle {
+  background: var(--panel-gap, var(--border)); cursor: col-resize; transition: background 0.15s;
+  position: relative; z-index: 10; flex-shrink: 0;
+}
+.resize-handle::before {
+  content: ''; position: absolute; left: 50%; transform: translateX(-50%);
+  width: 2px; top: 0; bottom: 0; background: var(--border); pointer-events: none;
+  transition: background 0.15s;
+}
+.resize-handle:hover, .resize-handle.dragging { background: var(--accent); }
+.resize-handle:hover::before, .resize-handle.dragging::before { background: var(--accent); }
+
+/* LEFT PANEL */
+.left-panel { display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--surface); overflow: hidden; }
+.video-block { flex-shrink: 0; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; }
+.video-meta { order: -1; border-bottom: 1px solid var(--border); }
+.channel-badge { display: none; } /* channel shown in title area instead */
+.frame-channel-label, .frame-glow { display: none; }
+.video-embed { width: 100%; display: flex; flex-direction: column; background: var(--vc-bg); position: relative; overflow: visible; border: 1px solid var(--vc-border); border-radius: 0; padding: 8px 8px 0 8px; }
+.video-embed:fullscreen {
+  display: flex !important; flex-direction: column !important;
+  width: 100% !important; height: 100% !important;
+  padding: 0 !important; border: none !important; background: #000 !important; overflow: hidden !important;
+}
+.video-embed:fullscreen .video-frame { flex: 1 1 auto !important; aspect-ratio: auto !important; width: 100% !important; }
+.video-embed:fullscreen .video-frame iframe { width: 100% !important; height: 100% !important; }
+.video-embed:fullscreen .video-scrubber {
+  display: flex !important; flex-shrink: 0 !important; position: relative !important; z-index: 10;
+  background: rgba(0,0,0,0.85) !important; padding: 10px 16px !important; border-top: none !important;
+}
+.video-embed:fullscreen .scrubber-btn { color: rgba(255,255,255,0.7) !important; }
+.video-embed:fullscreen .scrubber-btn:hover { color: #fff !important; }
+.video-embed:fullscreen #subtitleOverlay { font-size: 32px !important; }
+/* Subtitle overlay — lives inside .video-frame. Positioned over the video
+   pixels via position:absolute; .video-frame is position:relative. Because
+   the overlay is a descendant of .video-embed, it is captured by the
+   fullscreen request on .video-embed automatically. */
+#subtitleOverlay {
+  position: absolute;
+  bottom: 5px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  pointer-events: none;
+  font-size: 15px;
+  font-weight: 600;
+  /* CC subtitle text — content role since it carries user video transcript
+     in any of the 105 supported languages. var(--font-content-heading)
+     resolves to Space Grotesk + i18n fallback chain so Persian / Arabic /
+     CJK / Devanagari subtitles render in the correct script font instead
+     of falling to system default. */
+  font-family: var(--font-content-heading);
+  color: #FFD700;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.85), 0 0 2px rgba(0,0,0,0.9);
+  padding: 0 16px;
+  line-height: 1.4;
+  /* Balance line widths so wrapped subtitles never produce a long line
+     followed by a 1-word orphan. Language-agnostic — works for Latin,
+     Persian, Arabic, CJK, etc. Older browsers without support fall back
+     to default wrapping (no harm). */
+  text-wrap: balance;
+  z-index: 15;
+}
+#subtitleOverlay span {
+  background: rgba(0,0,0,0.55);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.video-frame { width: 100%; aspect-ratio: 16 / 9; flex-shrink: 0; position: relative; overflow: hidden; border-radius: 0; background: transparent; }
+.video-scrubber {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 8px; flex-shrink: 0;
+  background: var(--vc-bg); border-top: 1px solid var(--vc-border);
+  border-radius: 0; overflow: visible;
+  position: relative;
+  z-index: 6;
+}
+.nw-history-btn, .nw-profile-btn { display: none; }
+/* Scrubber time readouts: SAME colour pattern as middle controller's
+   .mech-time-* (both sections stay visually consistent). Elapsed/current
+   = --accent full; total = --accent at 50% opacity (the "faded" version).
+   Brutalist preserves yellow via a scoped override below. */
+.scrubber-time { font-family: 'Bebas Neue', sans-serif; font-size: 15px; line-height: 1; letter-spacing: 1px; color: var(--accent); min-width: 7ch; }
+#scrubberCurrent { color: var(--accent); text-align: right; text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 35%, transparent); }
+#scrubberTotal { text-align: left; opacity: 0.5; }
+.scrubber-track {
+  flex: 1; height: 4px; background: color-mix(in srgb, var(--nav-bg) 80%, black); border-radius: 0;
+  cursor: pointer; position: relative; overflow: visible;
+}
+.scrubber-track::before {
+  content: ''; position: absolute; left: 0; right: 0; top: -10px; bottom: -10px;
+  cursor: pointer;
+}
+.scrubber-fill { height: 100%; width: 0%; background: var(--accent); border-radius: 0; transition: none; box-shadow: 0 0 10px 2px color-mix(in srgb, var(--accent) 40%, transparent), 0 0 20px 4px color-mix(in srgb, var(--accent) 20%, transparent); }
+.scrubber-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; flex-shrink: 0;
+  background: color-mix(in srgb, var(--mech-accent) 18%, transparent);
+  border: none; border-radius: 4px; cursor: pointer;
+  color: var(--mech-icon); transition: all 0.15s;
+}
+.scrubber-btn:hover {
+  color: var(--mech-bright);
+  background: color-mix(in srgb, var(--mech-accent) 35%, transparent);
+  box-shadow: 0 0 8px var(--mech-glow);
+}
+.scrubber-btn:active { transform: scale(0.92); }
+.scrubber-btn svg { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--mech-glow) 40%, transparent)); }
+.scrubber-vol-wrap {
+  position: relative; display: flex; align-items: center; flex-shrink: 0;
+  z-index: 7;
+}
+.scrubber-vol-slider {
+  position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+  width: 28px; height: 0; overflow: hidden; transition: height 0.2s ease, padding 0.2s ease;
+  display: flex; justify-content: center; align-items: flex-end;
+  padding: 0;
+  background: color-mix(in srgb, var(--vc-bg) 92%, transparent);
+  border-radius: 4px;
+  z-index: 8;
+  pointer-events: auto;
+}
+.scrubber-vol-wrap.vol-open .scrubber-vol-slider { height: 70px; padding: 8px 0 12px 0; }
+.scrubber-vol-track {
+  width: 4px; height: 100%; background: var(--mech-dim); border-radius: 0;
+  cursor: pointer; position: relative; overflow: visible;
+}
+/* Volume fill uses --accent so it matches the main progress scrubber fill
+   per theme (primary theme accent, distinctly different per theme). */
+.scrubber-vol-fill {
+  position: absolute; bottom: 0; left: 0; width: 100%; background: var(--accent); border-radius: 0;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 40%, transparent); transition: height 0.05s;
+}
+.scrubber-vol-track::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: -8px; right: -8px;
+  cursor: pointer;
+}
+.scrubber-yt-wordmark { width: auto; padding: 0 6px; margin-left: -4px; background: transparent; }
+.scrubber-yt-wordmark:hover { background: transparent; box-shadow: none; }
+.yt-wordmark { font-family: 'Bebas Neue', sans-serif; font-size: 13px; font-weight: 400; color: var(--mech-text); letter-spacing: 1.5px; line-height: 1; text-transform: uppercase; }
+.yt-wordmark span { color: var(--mech-text); }
+.scrubber-yt-wordmark:hover .yt-wordmark { color: var(--mech-bright); text-shadow: 0 0 8px var(--mech-glow); }
+.scrubber-yt-wordmark:hover .yt-wordmark span { color: var(--mech-bright); }
+#ytPlayer {
+  width: 100%; height: 100%; overflow: hidden; background: transparent;
+  /* Explicit "natural" filter so the post-rewind .rewinding-class removal
+     animates smoothly via the transition below — browsers interpolate
+     filter functions when both states declare the same function set. */
+  filter: grayscale(0) contrast(1) brightness(1);
+  transition: filter 600ms ease-out;
+}
+.video-embed iframe { width: 100%; height: 100%; border: none; display: block; }
+.yt-fallback { position: absolute; inset: 0; z-index: 2; overflow: hidden; }
+.yt-fallback a { display: block; width: 100%; height: 100%; text-decoration: none; color: inherit; position: relative; }
+.yt-fallback img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; background: var(--vc-bg); }
+/* YT fallback label color uses --accent so it tracks theme (was #FACC15). */
+.yt-fallback-label { position: absolute; bottom: 0; left: 0; right: 0; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; color: var(--accent); text-align: left; padding: 14px 16px; background: linear-gradient(transparent, rgba(0,0,0,0.85)); white-space: normal; line-height: 1.4; }
+.yt-fallback a:hover .yt-fallback-label { background: linear-gradient(transparent, rgba(0,0,0,0.92)); }
+.yt-facade {
+  position: absolute; inset: 0; z-index: 3; cursor: pointer; background: var(--vc-bg);
+  /* See note on #ytPlayer — the facade gets the same grayscale filter under
+     .rewinding so it slots in seamlessly at the end of rewind, then colorizes
+     in unison with the iframe when .rewinding is removed. */
+  filter: grayscale(0) contrast(1) brightness(1);
+  transition: filter 600ms ease-out;
+}
+.yt-facade img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; background: var(--vc-bg); }
+.yt-facade-play { position: absolute; top: 50%; left: calc(50% + 50px); transform: translate(-50%, -50%); width: min(35px, 16%); height: auto; background: none; border: none; padding: 0; cursor: pointer; opacity: 0.85; transition: opacity 0.15s; }
+.yt-facade-play svg { width: 100%; height: auto; display: block; }
+.yt-facade-play .yt-play-frameless { display: none; }
+.yt-facade:hover .yt-facade-play { opacity: 1; }
+/* ── Frameless mode ──
+   Used during VHS rewind handoff: facade is mounted from rewind start so a
+   single play button is visible the entire time (covering YT's own grey
+   button inside the iframe). Hides the curated YT thumbnail (img), goes
+   transparent so the iframe's rewind frames show through, and swaps the
+   red YT play SVG for a white outlined circle that reads identically in
+   B&W (during .rewinding) and color (after). Sized larger than the YT
+   default button so it visually covers it underneath. */
+.yt-facade--frameless { background: transparent; }
+.yt-facade--frameless img { display: none; }
+/* Override the parent .yt-facade-play `left: calc(50% + 50px)` (which centers
+   on the visually un-masked thumbnail area) — for frameless mode we want to
+   align with the IFRAME's true center AND match the SIZE of YT's own pause-
+   state play button (rendered at iframe center inside their cross-origin
+   iframe). Same size + same position means when our button is dismissed and
+   YT's brief pause-overlay flashes during scrubbing, the user reads it as
+   the same button — no visual jump, no "wait there's a second button"
+   moment. Sized at 35px to mirror YT's default play overlay. */
+.yt-facade--frameless .yt-facade-play { left: 50%; width: min(35px, 12%); opacity: 0.9; }
+.yt-facade--frameless .yt-facade-play .yt-play-yt { display: none; }
+.yt-facade--frameless .yt-facade-play .yt-play-frameless { display: block; }
+.yt-facade--frameless:hover .yt-facade-play { opacity: 1; }
+.yt-overlay { position: absolute; inset: 0; z-index: 4; cursor: pointer; }
+.video-controls { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--vc-bg); border-top: 1px solid var(--vc-border); }
+/* Desktop video-controls buttons — routed through design tokens.
+   - font-family via --font-body / --font-mono
+   - border-radius via --radius-sm (sharp on brutalist, rounder elsewhere)
+   - border-width via --border-width (2px on brutalist, 1px others)
+   - hover / play-btn use --highlight-pop so each theme's "pop" accent
+     drives the emphasis (brutalist coral; other themes use theirs). */
+.vc-btn {
+  width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--vc-cc-bg); border: var(--border-width) solid var(--vc-border);
+  border-radius: var(--radius-sm); color: var(--vc-text);
+  cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+}
+.vc-btn svg { width: 8px; height: 8px; }
+.vc-btn:hover {
+  color: var(--highlight-pop);
+  border-color: color-mix(in srgb, var(--highlight-pop) 30%, transparent);
+  background: color-mix(in srgb, var(--highlight-pop) 10%, transparent);
+}
+.vc-btn.play-btn {
+  width: 20px; height: 18px;
+  color: var(--highlight-pop);
+  background: color-mix(in srgb, var(--highlight-pop) 12%, transparent);
+  border-color: color-mix(in srgb, var(--highlight-pop) 30%, transparent);
+}
+.vc-btn.play-btn svg { width: 9px; height: 9px; }
+.vc-btn.play-btn:hover {
+  color: var(--highlight-pop);
+  background: color-mix(in srgb, var(--highlight-pop) 22%, transparent);
+}
+.vc-time {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: var(--heading-weight);
+  color: var(--text-primary);
+  padding: 0 4px;
+  opacity: 0.7;
+}
+.vc-time span { color: var(--vc-text); }
+.vc-spacer { flex: 1; }
+.vc-cc {
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: var(--heading-weight);
+  background: transparent;
+  color: var(--text-primary);
+  border: var(--border-width) solid color-mix(in srgb, var(--text-primary) 20%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 2px 5px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.vc-cc:hover, .vc-cc.on {
+  background: color-mix(in srgb, var(--highlight-pop) 15%, transparent);
+  color: var(--highlight-pop);
+  border-color: color-mix(in srgb, var(--highlight-pop) 40%, transparent);
+}
+.channel-badge {
+  position: absolute; bottom: -11px; left: 12px; z-index: 5;
+  /* Channel name — can be in any language (e.g. Movarekh Podcast,
+     مستندساز, etc.). Use content role for proper script rendering. */
+  font-family: var(--font-content-heading); font-size: 11px; font-weight: 600;
+  color: var(--accent); background: var(--accent-light); border: 1px solid #BFCFFF;
+  padding: 3px 10px; border-radius: 20px;
+  white-space: nowrap; max-width: 70%; overflow: hidden; text-overflow: ellipsis;
+}
+.channel-badge:empty { display: none; }
+.video-meta { padding: 16px 12px 10px; background: var(--surface); }
+/* Title styles moved to title.css */
+.video-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.vtag { font-size: 10.5px; font-weight: 500; padding: 2px 8px; border-radius: 20px; background: var(--bg); color: var(--text-secondary); border: 1px solid var(--border); }
+.vtag.channel { color: var(--accent); background: var(--accent-light); border-color: #BFCFFF; }
+/* .chapters-block, .chapters-header moved to chapters.css */
+.section-label { font-family: 'Space Grotesk', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: var(--text-muted); }
+/* .summary-title-label moved to summary.css */
+/* .chapters-list, .chapter-item, .chapter-num, .chapter-name moved to chapters.css */
+
+/* CENTER PANEL */
+.center-panel { display: flex; flex-direction: column; background: var(--panel-gap, var(--bg)); overflow: hidden; border-right: 1px solid var(--border); }
+.tab-bar { display: flex; align-items: stretch; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 16px; flex-shrink: 0; gap: 2px; }
+.tab-btn { display: flex; align-items: center; gap: 4px; padding: 6px 10px; font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 600; color: var(--text-muted); background: none; border: none; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.tab-btn:hover { color: var(--text-secondary); }
+.tab-btn.active { color: var(--accent); }
+.tab-btn svg { width: 13px; height: 13px; }
+.tab-spacer { flex: 1; }
+.tab-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.tab-pane { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.tab-pane.active { display: flex; }
+/* .tab-btn-chapters moved to chapters.css */
+.nav-circle-btn { display: none; }
+/* #tab-chapters moved to chapters.css */
+/* .summary-pane, .summary-quick-card, .summary-quick-text etc. moved to summary.css */
+/* ── RTL layout (all RTL languages: fa, ar, he, ur) ────────── */
+/* NOTE: .ts-text/.ts-chip in transcript.css, .video-title-text per-element (crossfade) */
+/* .chapter-name, .chapter-num RTL rules moved to chapters.css */
+/* .summary-quick-text, .context-text, .context-block RTL rules moved to summary.css */
+/* :not(.gb-display) excludes the greeting bubble — its lang/dir is per-display
+   (see .gb-display.lang-fa rules below) so it never gets restyled by these
+   global selectors during a language switch. */
+#resultsView.rtl .chat-bubble:not(.gb-display),
+#resultsView.rtl .vtag { direction: rtl; text-align: right; }
+/* Suggestion chips (initial rail + follow-up rails) flip with the rest of
+   the chat panel under RTL languages. The flex layout of .chat-chip-rail
+   itself already inherits direction; this rule handles the per-pill text. */
+#resultsView.rtl .chat-chip { direction: rtl; text-align: right; }
+/* rtl-layout grid flip removed — chapters always left, chat always right regardless of lang */
+/* #resultsView.rtl .chapter-item, .chapter-num, .chapters-header moved to chapters.css */
+/* ── Persian-specific (Vazirmatn font, line-height tweaks) ── */
+/* NOTE: .ts-text and .ts-chip font rules are in transcript.css (per-buffer) */
+/* .chapter-name, .chapter-num Persian font rules moved to chapters.css */
+/* .summary-quick-text, .context-text Persian rules moved to summary.css */
+#resultsView.lang-fa .chat-bubble:not(.gb-display),
+#resultsView.lang-fa .vtag { font-family: 'Vazirmatn', sans-serif; line-height: 1.75; }
+/* .ts1-top/.ts1-bottom font rules moved to title.css (per-element) */
+/* ── Arabic-specific (Noto Sans Arabic font) ── */
+/* .chapter-name, .chapter-num Arabic font rules moved to chapters.css */
+/* .summary-quick-text, .context-text Arabic rules moved to summary.css */
+#resultsView.lang-ar .chat-bubble:not(.gb-display),
+#resultsView.lang-ar .vtag { font-family: 'Noto Sans Arabic', sans-serif; line-height: 1.75; }
+/* ── Hebrew-specific (Noto Sans Hebrew font) ── */
+/* .chapter-name, .chapter-num Hebrew font rules moved to chapters.css */
+/* .summary-quick-text, .context-text Hebrew rules moved to summary.css */
+#resultsView.lang-he .chat-bubble:not(.gb-display),
+#resultsView.lang-he .vtag { font-family: 'Noto Sans Hebrew', sans-serif; line-height: 1.75; }
+/* .summary-context-card, .context-block, .summary-highlight, .k-word etc. moved to summary.css */
+/* Transcript styles moved to transcript.css */
+.bookmarks-pane { padding: 16px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.bookmark-item { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; cursor: pointer; transition: all 0.12s; }
+.bookmark-item:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(37,99,235,0.08); }
+.bm-ts { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; color: var(--accent); background: var(--accent-light); padding: 3px 8px; border-radius: 4px; border: 1px solid #67C8D8; flex-shrink: 0; margin-top: 1px; }
+.bm-content { flex: 1; }
+.bm-note { font-size: 13px; color: var(--text-primary); line-height: 1.5; margin-bottom: 3px; }
+.bm-chapter { font-size: 11px; color: var(--text-muted); }
+.bm-delete { background: none; border: none; color: var(--text-muted); font-size: 14px; cursor: pointer; padding: 2px 4px; border-radius: 4px; transition: color 0.12s; line-height: 1; }
+.bm-delete:hover { color: #DC2626; }
+.add-bookmark-row { display: flex; gap: 8px; margin-top: 8px; }
+.add-bookmark-row input { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-content-body); font-size: 12.5px; background: var(--bg); color: var(--text-primary); outline: none; transition: border-color 0.15s; }
+.add-bookmark-row input:focus { border-color: var(--accent); background: #fff; }
+.add-bookmark-row input::placeholder { color: var(--text-muted); }
+.btn-add-bm { background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); padding: 8px 14px; font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+.btn-add-bm:hover { background: var(--accent-hover); }
+
+/* RIGHT: CHAT */
+.chat-panel { display: flex; flex-direction: column; background: var(--surface2); overflow: hidden; position: relative; transition: filter 0.6s ease; }
+/* Desktop rewind: blur the chat panel from the moment it slides in until
+   shortly before the video controls re-enable. JS toggles this body class
+   in app.js: added with the morph entries, removed in the staggered
+   rewind-reveal block at +800ms (between nw-left at 500ms and #mechPanel
+   at 1200ms — chat un-blurs BEFORE controls so transport stays the last
+   thing to come alive). Uses filter (not opacity) on purpose: previous
+   attempts to dim chat via opacity caused a visible "snap to opaque" on
+   reveal — see the comment block in app.js _runStaggeredMorph. */
+@media (min-width: 901px) {
+  body.rewind-desktop-chat .chat-panel {
+    filter: blur(6px);
+    pointer-events: none;
+  }
+}
+#chatEmptyState.chat-empty-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; top: 100px; bottom: auto; opacity: 0.45; pointer-events: none; z-index: 0; }
+.chat-empty-icon { font-size: 32px; }
+.chat-empty-text { font-family: 'Bebas Neue', sans-serif; font-size: 20px; font-weight: 400; letter-spacing: 4px; color: var(--text-muted); text-transform: uppercase; margin-top: 8px; }
+.chat-header { padding: 12px 14px 11px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.chat-title { font-family: 'Space Grotesk', sans-serif; font-size: 8.5px; font-weight: 700; letter-spacing: 1.8px; text-transform: none; color: var(--text-muted); }
+/* Chat "online" indicator color routed through --accent so it matches the
+   active theme (was hardcoded green #16A34A, which ignored theme cycles). */
+.chat-online { display: flex; align-items: center; gap: 4px; margin-left: auto; font-size: 10.5px; color: var(--accent); font-family: 'Space Grotesk', sans-serif; font-weight: 600; }
+.chat-online::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+/* Maximize/restore button is mobile-overlay-only. The chat-panel lives
+   in the desktop right column too, so we hide the button by default and
+   only the mobile media block re-shows it when the panel is nested
+   inside .mobile-chat-overlay. */
+.chat-maximize-btn { display: none; }
+.chat-messages { flex: 1; overflow-y: auto; overflow-anchor: none; padding: 14px 12px 6px; display: flex; flex-direction: column; gap: 7px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; position: relative; z-index: 1; }
+/* Spacer pushes the first bubble to the bottom when the chat is near-empty.
+   Was `min-height: 100%` which forced the spacer to stay container-height even
+   after bubbles filled the space — total scroll height became 100% + bubbles,
+   letting the user scroll the first bubble out of view. `flex: 1` alone gives
+   the same "push to bottom" behaviour while allowing the spacer to shrink as
+   real content grows. */
+.chat-spacer { flex: 1; }
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.chat-bubble { max-width: 86%; padding: 7px 11px; border-radius: 12px; font-size: 15px; font-family: var(--font-content-chat); line-height: 1.55; transition: opacity 0.35s ease-out; }
+.chat-bubble-enter { opacity: 0; }
+.bubble-ai { background: var(--bubble-ai-bg, #eef4f8); color: var(--bubble-ai-text, var(--text-secondary, #1e293b)); border: 1px solid var(--bubble-ai-border, #dbe4ec); border-bottom-left-radius: 4px; align-self: flex-start; }
+
+/* ── Greeting Bubble Host (double-buffer crossfade — same pattern as chapters/summary) ──
+   Grid-stacks the two .gb-display slots in the same cell so host sizes to
+   max(A, B) naturally. Active is opaque, standby is hidden at opacity 0. */
+.gb-host { position: relative; display: grid; align-self: flex-start; max-width: 86%; min-width: 0; width: fit-content; }
+.gb-host .chat-bubble.gb-display { grid-area: 1 / 1; max-width: 100%; align-self: auto; }
+/* Brutalist desktop chat-bubbles override .chat-bubble's max-width and use
+   `align-self: stretch !important` to fill the chat panel's full width. The
+   greeting (.gb-host) inherited the global 86% cap and flex-start alignment,
+   making it narrower and offset compared to every other bubble — visible as
+   a side indent (especially in RTL, where the gap lands on the colored-line
+   side). Match the surrounding bubbles by stretching the host too. Mobile
+   already does this via .mobile-chat-overlay .gb-host rules below. */
+body.theme-brutalist .gb-host {
+  align-self: stretch !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+.gb-display-active { z-index: 2; }
+.gb-display-standby { opacity: 0; pointer-events: none; z-index: 1; }
+
+/* ── Per-display lang/dir scoping for greeting bubble (mirrors chapters .cs-display.lang-fa pattern) ──
+   The bubble's font/direction is determined by ITS OWN class (toggled by
+   _applyBubbleDirection in translation-bilingual.js). Switching languages
+   only restyles the bubble whose CLASS just changed (= standby with new
+   content). Active stays in its old appearance until the role swap. */
+.gb-display.lang-fa { font-family: 'Vazirmatn', sans-serif !important; line-height: 1.75 !important; }
+.gb-display.lang-ar { font-family: 'Noto Sans Arabic', sans-serif !important; line-height: 1.75 !important; }
+.gb-display.lang-he { font-family: 'Noto Sans Hebrew', sans-serif !important; line-height: 1.75 !important; }
+.gb-display.rtl { direction: rtl !important; text-align: right !important; }
+.gb-display.ltr { direction: ltr !important; text-align: left !important; }
+
+/* Brutalist theme — per-display lang/dir scoping for greeting bubble */
+/* Brutalist greeting-bubble per-script line-height. Font face from
+   --font-content-chat redefinition + script disambiguation. */
+body.theme-brutalist .gb-display.lang-fa,
+body.theme-brutalist .gb-display.lang-ar,
+body.theme-brutalist .gb-display.lang-he { line-height: 1.75 !important; }
+body.theme-brutalist .gb-display.rtl { border-left: none !important; border-right: 2px solid transparent !important; padding: 6px 18px 6px 0 !important; }
+body.theme-brutalist .gb-display.ltr { border-left: 2px solid transparent !important; border-right: none !important; padding: 6px 0 6px 18px !important; }
+body.theme-brutalist .gb-display.bubble-ai.rtl { border-right-color: #06B6D4 !important; }
+body.theme-brutalist .gb-display.bubble-ai.ltr { border-left-color: #06B6D4 !important; }
+.bubble-user { background: var(--accent, #0ea5c9); color: #fff; border-bottom-right-radius: 4px; align-self: flex-end; }
+.bubble-label { font-size: 9px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+.bubble-ai .bubble-label { color: var(--bubble-label-color, var(--text-secondary)); font-size: 13px; text-transform: none; margin-bottom: 2px; display: flex; align-items: center; gap: 4px; }
+.bubble-ai .bubble-label .label-shark { height: 14px; width: auto; }
+.bubble-user .bubble-label { color: rgba(255,255,255,0.6); text-align: right; }
+/* Desktop: hide the "You" label on user bubbles — redundant given the
+   bubble's right-aligned position + accent fill already make ownership
+   obvious. Kept on mobile (where the chat overlay reads more like a
+   thread, so the role label adds clarity). */
+@media (min-width: 901px) {
+  .bubble-user .bubble-label { display: none; }
+}
+
+/* ── Suggested-question chips (YouTube/Gemini-style) ─────────────────
+   Right-aligned outlined pills that sit below the greeting bubble.
+   Tap → prefills the chat input + sends. Rail removes itself after
+   the first message. Tokens (--accent, --border, --surface, --text-*)
+   make this work in every theme without per-theme overrides. */
+.chat-chip-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+  align-self: stretch;
+}
+.chat-chip {
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: var(--font-content-heading);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.3;
+  cursor: pointer;
+  text-align: right;
+  max-width: 86%;
+  /* display: table forces the pill to shrink to its actual wrapped
+     content width — without it, max-width:86% caps the pill but the box
+     stays at 86% even after the text wraps to a narrower visual width.
+     Tables natively re-measure to fit cell contents after wrap, so each
+     pill collapses to fit its longest wrapped line. align-items:flex-end
+     on .chat-chip-rail still right-positions the (now narrower) pill
+     within the chat panel. */
+  display: table;
+  /* text-wrap: balance distributes wrapped lines into similar widths
+     instead of "long line + tiny line" — without this, right-align +
+     short trailing line leaves visible empty space on the left of the
+     shorter line. Combined with display:table above, multi-line pills
+     read as clean rectangular buttons matching their content shape. */
+  text-wrap: balance;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.08s;
+  -webkit-tap-highlight-color: transparent;
+}
+.chat-chip:hover {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+  color: var(--accent);
+}
+.chat-chip:active { transform: scale(0.97); }
+
+/* ── Mobile-only chip overrides — square corners + balanced wrap.
+   Scoped to (max-width: 900px) so desktop non-brutalist still uses the
+   pill shape from the rules above. text-wrap: balance distributes
+   wrapped lines so a 2-line chip's lines have similar widths instead of
+   one long line + one short — fixes the awkward "empty space" the
+   right-align + max-width:86% combo produces on long questions. */
+@media (max-width: 900px) {
+  .chat-chip {
+    border-radius: 4px;
+  }
+}
+
+/* ── Desktop themed chips (non-brutalist) — make the theme's accent
+   actually show at rest, not just on hover. The global .chat-chip
+   already uses var(--surface) / var(--border) which themes via tokens,
+   but most themes have similar whitish surfaces at rest so the user
+   couldn't visually tell them apart. Adding an accent-tinted background
+   and accent-tinted border surfaces each theme's identity. Hover is a
+   solid accent fill (was a soft tint) for stronger feedback.
+   Brutalist desktop has its own override above; mobile is excluded
+   via @media (min-width:901px) so the mobile shape stays untouched. */
+@media (min-width: 901px) {
+  body:not(.theme-brutalist) .chat-chip {
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    color: var(--text-primary);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  }
+  body:not(.theme-brutalist) .chat-chip:hover {
+    background: var(--accent);
+    color: var(--surface);
+    border-color: var(--accent);
+  }
+}
+
+/* Follow-up chips appear after each AI answer (YouTube/Gemini-style
+   "more questions" row). Wrap to a second row instead of scrolling
+   horizontally, and chips themselves wrap text to a second line so
+   long questions never get clipped or truncated. */
+.chat-followup-chips {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 6px;
+  margin-bottom: 4px;
+  align-self: stretch;
+  padding: 4px 2px 6px;
+  animation: chatChipFadeIn 0.28s ease both;
+  /* Pin natural height — without flex-shrink: 0 the chips' column-flex
+     parent (`.chat-messages`) squeezes the rail when vertical room is
+     tight, crushing the chips. */
+  flex: 0 0 auto;
+}
+.chat-chip-followup {
+  /* Layout-only overrides for follow-up chips (which sit in a flex row
+     where two chips share equal width). Font, padding, border-radius
+     are inherited from .chat-chip — DO NOT pin them here. The shape +
+     typography must match initial chips for visual consistency. */
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: normal;
+  word-break: break-word;
+  display: inline-block;
+  line-height: 1.3;
+  /* Defeat brutalist body styling that uppercases + mono-fonts buttons,
+     and any decorative `::before/::after` pseudo-elements brutalist
+     adds to <button> elements (e.g. corner brackets). */
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+.chat-chip-followup::before,
+.chat-chip-followup::after { content: none !important; display: none !important; }
+@keyframes chatChipFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.chat-input-area { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-shrink: 0; min-width: 0; }
+.chat-input-wrap { position: relative; flex: 1; min-width: 0; }
+.chat-input { width: 100%; min-width: 0; padding: 9px 50px 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-content-chat); font-size: 16px; color: var(--text-primary); background: var(--bg); outline: none; transition: border-color 0.15s; resize: none; height: 38px; line-height: 1.4; box-sizing: border-box; overflow: hidden; }
+.chat-input::-webkit-scrollbar { display: none; }
+.chat-input { scrollbar-width: none; }
+.btn-clear-input { position: absolute; right: 4px; top: 50%; transform: translateY(-50%) translateX(10px); border: 1px solid rgba(6,182,212,0.3); background: var(--nav-bg, #061526); color: var(--mech-bright, #06B6D4); font-family: 'Space Grotesk', sans-serif; font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border-radius: 10px; cursor: pointer; opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none; }
+.btn-clear-input:hover { opacity: 1; }
+.btn-clear-input.visible { opacity: 0.7; pointer-events: auto; transform: translateY(-50%) translateX(0); }
+
+/* Phase 5d/5c: privacy ⓘ icon next to the chat input. Sits before the Clear
+   pill (right edge of the input) and disappears whenever Clear takes over
+   that slot, so the two never visually collide. ~22px tap target on mobile. */
+.chat-privacy-info {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  background: transparent;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+.chat-privacy-info:hover { opacity: 1; color: var(--accent); background: rgba(0,0,0,0.04); }
+.btn-clear-input.visible ~ .chat-privacy-info,
+.chat-input-wrap:has(.btn-clear-input.visible) .chat-privacy-info { opacity: 0; pointer-events: none; }
+
+.chat-input:focus { border-color: var(--accent); background: var(--surface, #fff); }
+.chat-input::placeholder { color: var(--text-muted); }
+/* Chat send button uses theme --accent (was hardcoded yellow #FFD100) so it
+   tracks the active theme like everything else. Brutalist theme keeps its
+   own scoped override at line ~3533. */
+.btn-send { width: 38px; height: 38px; background: transparent; color: var(--accent); border: 1.5px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+.btn-send:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); border-color: var(--accent); }
+.btn-send svg { width: 18px; height: 18px; }
+.chat-hint { text-align: center; font-size: 9px; color: var(--text-muted); padding: 4px 12px 8px; font-family: 'Inter', sans-serif; }
+.chat-input:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-mic { width: 38px; height: 38px; background: var(--nav-bg, #061526); color: var(--mech-bright, #06B6D4); border: 1.5px solid var(--mech-bright, #06B6D4); border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; box-shadow: 0 0 8px var(--mech-glow, rgba(6,182,212,0.4)); }
+.btn-mic:hover { background: var(--mech-bright, #06B6D4); color: #fff; box-shadow: 0 0 16px var(--mech-glow, rgba(6,182,212,0.4)); }
+.btn-mic svg { width: 16px; height: 16px; filter: drop-shadow(0 0 3px var(--mech-glow, rgba(6,182,212,0.4))); }
+/* Mic "listening" (recording) state uses --accent2 so it adapts per theme
+   (was hardcoded red #ef4444 across all themes). Brutalist's --accent2 is
+   #DC2626 so it still looks red there; other themes use their own secondary
+   accent colour. */
+.btn-mic.listening { background: color-mix(in srgb, var(--accent2) 15%, transparent); border-color: var(--accent2); color: var(--accent2); box-shadow: 0 0 12px color-mix(in srgb, var(--accent2) 50%, transparent); animation: mic-pulse 1.5s ease-in-out infinite; }
+.btn-mic.listening svg { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent2) 60%, transparent)); }
+@keyframes mic-pulse { 0%, 100% { box-shadow: 0 0 8px rgba(239,68,68,0.4); } 50% { box-shadow: 0 0 18px rgba(239,68,68,0.7); } }
+/* Voice overlay — centered canvas popup */
+.voice-overlay {
+  display: none; position: absolute; inset: 0; z-index: 20;
+  flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: radial-gradient(ellipse 80% 30% at center, rgba(13,37,53,0.98) 0%, rgba(13,37,53,0.95) 50%, rgba(13,37,53,0.5) 80%, rgba(13,37,53,0) 100%);
+  border: none; border-radius: 0; padding: 0;
+  opacity: 0; transition: opacity 0.3s ease;
+}
+.voice-overlay.active { display: flex; opacity: 1; }
+.voice-overlay canvas { display: block; }
+.voice-overlay-label {
+  font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 600;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--mech-bright, #06B6D4); opacity: 0.6;
+}
+.typing-dots { display: inline-flex; gap: 4px; padding: 2px 0; }
+.typing-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); animation: typing-bounce 1.2s infinite ease-in-out; }
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
+.chat-ts { display: inline-flex; align-items: center; gap: 3px; background: var(--accent); color: #fff; text-decoration: none; font-size: 11.5px; font-weight: 600; font-family: 'Space Grotesk', var(--font-i18n); padding: 2px 7px 2px 5px; border-radius: 20px; cursor: pointer; vertical-align: middle; transition: background 0.15s, transform 0.1s; white-space: nowrap; }
+.chat-ts-icon { width: 10px; height: 10px; flex-shrink: 0; display: inline-block; }
+.chat-ts:hover { background: var(--accent-dark, #0284a8); opacity: 1; transform: scale(1.04); }
+
+/* CASUAL / DARK MODE */
+/* Casual-mode overrides previously hardcoded red (#DC2626 + shades) across
+   every theme. Routed through --accent2 (theme's secondary accent) so casual
+   mode adapts to the active theme instead of locking to red.
+     - Brutalist: --accent2 = #DC2626 → identical to before (red)
+     - Other themes: their own secondary accent (coral, pink, purple, etc.)
+   Lighter shades are derived via color-mix to preserve the layered look
+   (dark fill → medium hover → light background tints). */
+/* Removed: body.casual-mode .now-watching-bar { --accent: var(--accent2); }
+   This remap caused elements inside the now-watching bar (middle controller
+   — .mech-play-btn, .mech-cc-label, .mech-time-*) to resolve var(--accent)
+   as --accent2 while the scrubber (outside the bar) used the real --accent.
+   The two sections ended up coloured by two DIFFERENT theme variables,
+   breaking consistency. The individual casual-mode .nw-* rules below still
+   target --accent2 directly where needed. */
+body.casual-mode .nw-dot { background: var(--accent2); }
+body.casual-mode .vc-btn.play-btn { --accent: var(--accent2); --accent-hover: color-mix(in srgb, var(--accent2) 85%, black); background: var(--accent2); border-color: var(--accent2); }
+body.casual-mode .vc-btn.play-btn:hover { background: color-mix(in srgb, var(--accent2) 85%, black); border-color: color-mix(in srgb, var(--accent2) 85%, black); }
+body.casual-mode .nw-controls { border-bottom-color: color-mix(in srgb, var(--accent2) 40%, transparent); }
+body.casual-mode .nw-play-btn { background: var(--accent2); color: #fff; }
+body.casual-mode .nw-play-btn:hover { background: color-mix(in srgb, var(--accent2) 80%, white); }
+body.casual-mode .nw-time-current { color: color-mix(in srgb, var(--accent2) 70%, white); }
+body.casual-mode .nw-cc-btn:hover { border-color: color-mix(in srgb, var(--accent2) 70%, white); color: color-mix(in srgb, var(--accent2) 70%, white); }
+body.casual-mode .nw-cc-btn.on { background: var(--accent2); color: #fff; border-color: var(--accent2); }
+body.casual-mode .vtag.channel, body.casual-mode .channel-badge { color: var(--accent2); background: var(--accent2-light); border-color: color-mix(in srgb, var(--accent2) 35%, transparent); }
+body.casual-mode .nav-brand .shark-icon::after { content: ''; }
+body.casual-mode .bubble-ai .bubble-label { color: var(--accent2); }
+
+#casualIndicator { display: none; }
+#casualIndicator.show { display: inline-flex; align-items: center; gap: 5px; position: absolute; right: 180px; top: 50%; transform: translateY(-50%); font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; border-radius: 20px; padding: 3px 10px; white-space: nowrap; pointer-events: none; animation: casualFade 2.8s ease forwards; }
+#casualIndicator.show.mode-on  { color: color-mix(in srgb, var(--accent2) 55%, white); background: color-mix(in srgb, var(--accent2) 18%, transparent); border: 1px solid color-mix(in srgb, var(--accent2) 35%, transparent); }
+#casualIndicator.show.mode-off { color: #93c5fd; background: rgba(59,130,246,0.14); border: 1px solid rgba(59,130,246,0.28); }
+@keyframes casualFade { 0% { opacity: 0; } 15% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
+body.casual-mode .tab-btn.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+body.dark { --bg: #0F1923; --surface: #161F2C; --surface2: #111B2A; --border: #1E2D3D; --text-primary: #F1F5F9; --text-secondary: #94A3B8; --text-muted: #4B6070; --accent-light: #0F2340; --chip-bg: #0F2340; --chip-text: #60A5FA; --nav-bg: #080F18; --nav-muted: #4B5563; }
+
+/* THEME SWITCHER BUTTONS */
+.theme-switcher {
+  display: flex; align-items: center; gap: 3px; flex-shrink: 0;
+  background: rgba(232,71,108,0.12); border: 1px solid rgba(232,71,108,0.3);
+  border-radius: 8px; padding: 2px 3px;
+}
+.theme-cycle-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0;
+  background: rgba(232,71,108,0.08); border: 1px solid rgba(232,71,108,0.2);
+  border-radius: 5px; cursor: pointer; transition: all 0.15s;
+  color: rgba(232,71,108,0.7); flex-shrink: 0; line-height: 1;
+}
+.theme-cycle-btn:hover { background: rgba(232,71,108,0.18); border-color: rgba(232,71,108,0.5); }
+.theme-cycle-btn.is-active { background: rgba(232,71,108,0.22); border-color: rgba(232,71,108,0.6); box-shadow: 0 0 8px rgba(232,71,108,0.4); }
+
+/* ── Utility ── */
+.hidden { display: none !important; }
+.mobile-chat-fab { display: none; }
+.mobile-export-fab { display: none; }
+.mobile-lang-globe { display: flex; }
+.mobile-chat-overlay { display: none; }
+.nav-mobile-right {
+  display: flex; align-items: center; gap: 11px; margin-left: auto;
+}
+.nav-chat-btn-m,
+.nw-profile-btn-m,
+.nw-history-btn-m {
+  width: 28px; height: 28px;
+  padding: 0; display: flex; align-items: center; justify-content: center;
+  border-radius: 5px; flex-shrink: 0; border: none; background: none;
+}
+.nav-chat-btn-m {
+  display: none;
+  width: 28px; height: 28px;
+  /* Icon is rendered as a CSS background-image rather than an <img>
+     element — physically caps the rendering at the 28×28 button bounds.
+     `.nav-icon-btn:hover` (above) and the brutalist equivalent are
+     scoped with `:not(.nav-chat-btn-m)` so their `background:` shorthand
+     can't reset this bg-image on hover. */
+  background-image: url('../art/logo/sharky-chat.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  transition: transform 0.12s ease-out, filter 0.12s ease-out;
+}
+.nav-chat-btn-m:hover {
+  filter: brightness(1.15);
+  transform: scale(1.06);
+}
+.nav-chat-btn-m:active { transform: scale(0.92); }
+/* History + JD share PASTE's chrome (light tint bg + border) so all four
+   mobile-nav buttons sit at the same visual weight. Chat keeps its
+   icon-only treatment. */
+.nw-profile-btn-m,
+.nw-history-btn-m {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  transition: all 0.15s;
+}
+.nw-profile-btn-m:hover,
+.nw-history-btn-m:hover {
+  background: rgba(255,255,255,0.2);
+  border-color: rgba(255,255,255,0.4);
+}
+.nw-profile-btn-m .user-avatar-initials { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.75); }
+.nw-history-btn-m { font-size: 0; color: #5ABCD4; }
+.nw-history-btn-m svg { width: 14px; height: 14px; stroke: #5ABCD4; }
+/* (Brutalist mobile-nav overrides moved to brutalist.css — that file loads
+    after this one, so theme overrides need to live there to win at equal
+    specificity.) */
+.nav-paste-btn {
+  display: flex; align-items: center; gap: 4px;
+  height: 28px; padding: 0 10px; font-size: 9px;
+  border-radius: 5px; cursor: pointer;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.75);
+  box-shadow: none; font-weight: 700; letter-spacing: 0.5px;
+  font-family: 'Space Grotesk', sans-serif;
+  transition: all 0.15s;
+}
+.nav-paste-btn:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.4); }
+.nav-paste-btn svg { width: 11px; height: 11px; stroke: rgba(255,255,255,0.7); }
+/* .nav-spacer is hidden (no flex layout fight after the removal of the
+   conflicting `flex: 1` rule near line 310). !important dropped
+   2026-05-08 (Phase 3 B2). */
+.nav-spacer { display: none; }
+.nw-font-ctrl {
+  display: flex; align-items: center; gap: 0; flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 5px; overflow: hidden;
+  margin-right: 6px;
+}
+.nw-font-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0;
+  background: rgba(255,255,255,0.08); border: none;
+  color: rgba(255,255,255,0.5); cursor: pointer;
+  font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 11px;
+  transition: all 0.15s;
+}
+.nw-font-btn:first-child { border-right: 1px solid rgba(255,255,255,0.12); }
+.nw-font-btn:hover { background: rgba(255,255,255,0.16); color: rgba(255,255,255,0.8); }
+nav .btn-paste { display: none !important; }
+nav .user-menu-wrap { display: none !important; }
+nav .nav-divider { display: none; }
+.nw-paste-btn { display: none; }
+.nw-paste-btn svg { width: 11px; height: 11px; stroke: rgba(255,255,255,0.4); }
+.theme-cycle-btn .style-icon { width: 15px; height: 15px; stroke: rgba(232,71,108,0.65); }
+.theme-cycle-btn .style-icon-shark { width: 17px; height: 17px; opacity: 0.55; filter: saturate(0.6); }
+.theme-cycle-btn.is-active .style-icon { stroke: rgb(232,71,108); }
+.theme-cycle-btn.is-active .style-icon-shark { opacity: 1; filter: saturate(1) drop-shadow(0 0 4px rgba(232,71,108,0.7)); }
+
+
+
+/* Home view styles moved to css/home.css */
+
+/* ── Skeleton Loaders ── */
+.skeleton-wrap { display: flex; flex-direction: column; gap: 10px; padding: 12px 0; }
+.skeleton-wrap.skeleton-dark { opacity: 0.6; }
+.skeleton-line {
+  height: 14px; border-radius: 6px;
+  background: linear-gradient(90deg, var(--border, #A5E5F0) 25%, var(--surface, #F8FCFF) 50%, var(--border, #A5E5F0) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+.skeleton-line:nth-child(odd) { width: 90%; }
+.skeleton-line:nth-child(even) { width: 70%; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ── Translation ghost (cloned original, greyed out + shimmer overlay) ── */
+.translation-ghost { pointer-events: none; position: relative; overflow: hidden; }
+.translation-ghost * { color: transparent !important; border-color: transparent !important; background: transparent !important; }
+.translation-ghost span, .translation-ghost p, .translation-ghost a {
+  background: var(--border, #A5E5F0) !important; border-radius: 4px;
+  display: inline-block; line-height: inherit;
+}
+.translation-ghost img, .translation-ghost svg { opacity: 0.2; }
+.translation-ghost::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.4) 50%, transparent 75%);
+  background-size: 200% 100%; animation: shimmer 1.5s infinite; pointer-events: none;
+}
+
+/* ── Summary Progress Message (slot collapses smoothly to avoid layout jump) ── */
+.progress-slot {
+  overflow: hidden;
+  max-height: 56px;
+  margin-bottom: 8px;
+  transition: max-height 0.22s ease-out, margin-bottom 0.22s ease-out;
+}
+/* #transcriptProgressSlot moved to transcript.css */
+.progress-slot.collapsed {
+  max-height: 0;
+  margin-bottom: 0;
+}
+.translation-quality-warning {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 12px; margin-bottom: 8px;
+  font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 500;
+  line-height: 1.35;
+  color: #92400e; background: #fef3c7;
+  border: 1px solid #f59e0b; border-radius: var(--radius-sm, 6px);
+}
+.translation-quality-warning button {
+  background: none; border: none; color: #92400e; font-size: 16px;
+  cursor: pointer; padding: 0 4px; line-height: 1;
+}
+/* Informational notice (not a warning) — used for daily-translation-cap-hit. */
+.translation-info-notice {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 12px; margin-bottom: 8px;
+  font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 500;
+  line-height: 1.35;
+  color: #1e3a8a; background: #dbeafe;
+  border: 1px solid #3b82f6; border-radius: var(--radius-sm, 6px);
+}
+.translation-info-notice button {
+  background: none; border: none; color: #1e3a8a; font-size: 16px;
+  cursor: pointer; padding: 0 4px; line-height: 1;
+}
+/* .summary-progress-msg, .sp-spinner, .sp-text, @keyframes spin moved to summary.css */
+
+/* ── Language Switch Crossfade ──
+ * Each column's current content is snapshotted into a fixed-position .col-overlay
+ * on <body> (immune to panel re-renders). The overlay fades out with a staggered
+ * delay per column, revealing new content that rendered beneath. JS sets all
+ * positioning/background/animation styles inline. */
+@keyframes crossfadeOut {
+  0%   { opacity: 1; filter: saturate(1)   brightness(1); }
+  100% { opacity: 0; filter: saturate(0.4) brightness(0.85); }
+}
+
+/* ── Pipeline Status Bar ── */
+#pipelineStatus {
+  padding: 6px 16px;
+  font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 500;
+  color: var(--accent, #0891B2); background: var(--accent-light, #C8EEF5);
+  text-align: center;
+}
+#pipelineStatus.error { color: #DC2626; background: #FEF2F2; }
+#pipelineStatus.success { color: #059669; background: #ECFDF5; }
+/* Subsequent-paste swap on mobile: the black cover + paste-fade already
+   convey "loading" — the top bar pushing everything down a row above the
+   nav looks broken. body.suppress-pipeline-bar is added in app.js
+   processUrl() at the start of a mobile-swap and removed in its finally
+   block, so this only affects that exact window. */
+body.suppress-pipeline-bar #pipelineStatus { display: none !important; }
+
+/* ── Highlight Pill ── */
+.highlight-pill {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px; margin: 4px 0;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--accent, #0891B2); background: var(--accent-light, #C8EEF5);
+  border-radius: 20px; width: fit-content;
+}
+.highlight-pill button {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted, #7AAFC0); font-size: 14px; line-height: 1; padding: 0 2px;
+}
+.highlight-pill button:hover { color: var(--text-primary, #0C1E2A); }
+
+/* ═══════════════════════════════════════════════════════════
+   DESKTOP TAB-BAR TOOLBAR (V10 layout — desktop only)
+   Search next to tabs · 3 action buttons on the right
+   ═══════════════════════════════════════════════════════════ */
+.desktop-toolbar-search,
+.desktop-tabbar-spacer,
+.desktop-toolbar-actions { display: none; }
+
+/* Mobile-only tab button — hidden by default, shown inside mobile media query */
+.tab-btn-tools-mobile { display: none; }
+
+@media (min-width: 901px) {
+  .tab-bar { align-items: center; }
+
+  /* Search input in the desktop tab-bar (proxies to #searchInput in transcript) */
+  .desktop-toolbar-search {
+    display: flex;
+    align-items: center;
+    background: var(--surface, var(--bg));
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0 10px;
+    margin-left: 10px;
+    width: 280px;
+    height: 30px;
+    transition: border-color 0.15s;
+  }
+  .desktop-toolbar-search:focus-within {
+    border-color: var(--accent);
+  }
+  .desktop-toolbar-search svg {
+    width: 13px; height: 13px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .desktop-toolbar-search input {
+    flex: 1;
+    min-width: 0;
+    background: none;
+    border: none;
+    outline: none;
+    padding: 0 10px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    color: var(--text-primary, var(--text));
+  }
+  .desktop-toolbar-search input::placeholder {
+    color: var(--text-muted);
+  }
+
+  /* Spacer pushes the action cluster to the right */
+  .desktop-tabbar-spacer { display: block; flex: 1; }
+
+  /* Action button cluster (right side) */
+  .desktop-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 4px;
+  }
+
+  /* Slot for relocated bilingual controls (flags + ⧉) */
+  .desktop-bilingual-slot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .desktop-bilingual-slot:empty { display: none; }
+
+  /* Action pill buttons (Language / Bookmark / Export) */
+  .desktop-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 11px;
+    height: 30px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: var(--surface, var(--bg));
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .desktop-action-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .desktop-action-btn svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+  }
+
+  /* Hide the old in-tab-bar lang-group (Switch All + globe) on desktop —
+     Language is now in the new action cluster. */
+  .tab-bar .lang-group { display: none !important; }
+
+  /* Hide the old lang-bar (sticky row below tab-bar) on desktop —
+     bilingual controls now live in the desktop slot. */
+  .lang-bar { display: none !important; }
+
+  /* Hide the old in-transcript search toolbar on desktop —
+     search now lives in the tab-bar above. */
+  #tab-transcript .transcript-toolbar { display: none !important; }
+  #tab-transcript #searchChips { display: none !important; }
+
+  /* Hide the bare flex spacer the markup adds before .lang-group
+     (we use our own .desktop-tabbar-spacer instead) */
+  .tab-bar > div[style*="flex:1"] { display: none !important; }
+}
+
+/* ── VHS Rewind Loading Effect ── */
+
+.rewind-cover {
+  position: absolute; inset: 0;
+  z-index: 5;
+  background: #000;
+  transition: opacity 800ms ease-out, filter 600ms ease-out;
+}
+.rewind-cover.hidden { opacity: 0; pointer-events: none; }
+/* Degraded-mode cover: when iOS denies iframe autoplay, the rewind
+   module sets `.rewind-cover--thumbnail` + an inline backgroundImage
+   pointing at the YouTube poster (maxresdefault.jpg). Cover stays
+   visible throughout the rewind, the iframe behind never reveals.
+   Sized to fully cover the frame; image-load failure falls back to
+   the inherited #000 background. */
+.rewind-cover--thumbnail {
+  background-color: #000;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+.rewinding #ytPlayer,
+.rewinding .yt-facade,
+.rewinding .rewind-cover--thumbnail {
+  filter: grayscale(1) contrast(1.15) brightness(0.95);
+}
+
+.rewind-overlay {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  /* z-index: 4 sits above the .yt-facade (z-index: 3) so the scanlines blend
+     onto the post-rewind thumbnail facade the same way they blend onto the
+     iframe during the rewind animation. With z-index 2 the facade would
+     opaquely cover the scanlines the moment it appeared, breaking the
+     continuous "VHS aesthetic over the picture" feel during the colorize. */
+  z-index: 4;
+  opacity: 0;
+  transition: opacity 250ms;
+}
+.rewinding .rewind-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.overlay-vhs {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0) 0px,
+      rgba(255,255,255,0) 2px,
+      rgba(0,0,0,.18) 3px,
+      rgba(0,0,0,.18) 4px
+    );
+  mix-blend-mode: overlay;
+}
+
+.overlay-tracking-band {
+  position: absolute;
+  left: 0; right: 0;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+.overlay-tracking-band .band {
+  position: absolute;
+  left: 0; right: 0;
+  height: 200%;
+  top: 0;
+  animation: trackDrift 6s linear infinite;
+  background:
+    linear-gradient(to bottom,
+      transparent 0%,
+      transparent 24%,
+      rgba(255,255,255,.15) 25%,
+      rgba(255,255,255,.05) 25.5%,
+      transparent 26%,
+      transparent 74%,
+      rgba(255,255,255,.15) 75%,
+      rgba(255,255,255,.05) 75.5%,
+      transparent 76%,
+      transparent 100%
+    );
+}
+@keyframes trackDrift {
+  from { transform: translateY(0%); }
+  to   { transform: translateY(-50%); }
+}
+
+.rew-badge {
+  position: absolute;
+  top: 14px; left: 14px;
+  background: rgba(0,0,0,.6);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 1px;
+  display: flex; align-items: center; gap: 6px;
+  /* z-index: 6 sits above the .rewind-cover (z-index: 5) so the REW badge is
+     visible during the pre-rewind wait window — the cover is the backdrop
+     for the rewind UI, not a curtain hiding it. */
+  z-index: 6;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 180ms, transform 180ms;
+}
+.rewinding .rew-badge { opacity: 1; transform: translateY(0); }
+.rew-badge .rew-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #ff3b3b;
+  animation: rewBlink 0.7s infinite;
+}
+@keyframes rewBlink { 50% { opacity: .25; } }
+
+.rewind-seekbar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 6px;
+  background: rgba(255,255,255,.18);
+  z-index: 4;
+  opacity: 0;
+  transition: opacity 200ms;
+}
+.rewinding .rewind-seekbar { opacity: 1; }
+.rewind-progress {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 100%;
+  background: var(--mech-bright, #06B6D4);
+  box-shadow: 0 0 10px 2px var(--mech-glow, rgba(6,182,212,0.4));
+}
+.rewind-scrubber {
+  position: absolute;
+  top: 50%;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--mech-bright, #06B6D4);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 4px var(--mech-glow, rgba(6,182,212,0.25));
+}
+
+.rewind-time-label {
+  position: absolute;
+  bottom: 14px; right: 14px;
+  background: rgba(0,0,0,.6);
+  color: #fff; font-size: 12px; font-variant-numeric: tabular-nums;
+  padding: 4px 8px; border-radius: 4px;
+  /* z-index: 6 — same reason as .rew-badge: visible above the cover during
+     the pre-rewind wait. */
+  z-index: 6;
+  opacity: 0;
+  transition: opacity 200ms;
+}
+.rewinding .rewind-time-label { opacity: 1; }
+
+/* ── Component Entry Animations ── */
+
+.component-enter {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+}
+.component-enter.entered {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Staggered Morph — Enter Animations (desktop + mobile) ── */
+@keyframes morph-enter-down {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes morph-enter-down-dim {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 0.3; transform: translateY(0); }
+}
+@keyframes morph-enter-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes morph-enter-up-dim {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 0.3; transform: translateY(0); }
+}
+@keyframes morph-enter-left {
+  from { opacity: 0; transform: translateX(-30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes morph-enter-right {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes morph-enter-right-dim {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 0.3; transform: translateX(0); }
+}
+
+.morph-enter-down      { animation: morph-enter-down 400ms ease-out forwards; }
+.morph-enter-down-dim  { animation: morph-enter-down-dim 400ms ease-out forwards; }
+.morph-enter-up        { animation: morph-enter-up 450ms ease-out forwards; }
+.morph-enter-up-dim    { animation: morph-enter-up-dim 450ms ease-out forwards; }
+.morph-enter-left      { animation: morph-enter-left 450ms ease-out forwards; }
+.morph-enter-right     { animation: morph-enter-right 450ms ease-out forwards; }
+.morph-enter-right-dim { animation: morph-enter-right-dim 450ms ease-out forwards; }
+
+/* ── Desktop-only "-far" variants ────────────────────────────────────────
+   Same opacity choreography as the base variants, but the element starts
+   FULLY off-screen (translate by 100% of its own size) and slides into
+   place. Used only by desktop nav, now-watching-bar, and chat-panel during
+   the landing→video morph (see _runStaggeredMorph in src/js/app.js) so the
+   panel's own background arrives WITH the panel rather than being revealed
+   underneath it by the body bg, which previously caused a perceived "bg
+   snap" before the content faded in. Mobile intentionally keeps the short
+   20-30px translate variants above. */
+@keyframes morph-enter-down-far {
+  from { opacity: 0; transform: translateY(-100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes morph-enter-down-far-dim {
+  from { opacity: 0;   transform: translateY(-100%); }
+  to   { opacity: 0.3; transform: translateY(0); }
+}
+/* Stack variant: nav (52px) + .now-watching-bar (38px) = 90px combined.
+   Both panels use translateY(-90px) so they cover the SAME pixel distance
+   in the SAME duration — i.e. they move at the same speed. Combined with
+   matching delays (see _runStaggeredMorph: both at 1260), they slide in
+   as one contiguous dark block instead of two bars at different speeds
+   and different opacity offsets. The previous -100% per-element variant
+   made nav move at 130px/s and the now-watching-bar at 95px/s, so they
+   visibly drifted apart and finished at different times — read as "one
+   is more transparent than the other." */
+@keyframes morph-enter-down-stack {
+  from { opacity: 0; transform: translateY(-90px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes morph-enter-right-far {
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes morph-enter-right-far-dim {
+  from { opacity: 0;   transform: translateX(100%); }
+  to   { opacity: 0.3; transform: translateX(0); }
+}
+.morph-enter-down-far      { animation: morph-enter-down-far 400ms ease-out forwards; }
+.morph-enter-down-far-dim  { animation: morph-enter-down-far-dim 400ms ease-out forwards; }
+.morph-enter-down-stack    { animation: morph-enter-down-stack 400ms ease-out forwards; }
+.morph-enter-right-far     { animation: morph-enter-right-far 450ms ease-out forwards; }
+.morph-enter-right-far-dim { animation: morph-enter-right-far-dim 450ms ease-out forwards; }
+
+/* Mobile @media (max-width: 900px) Mobile Layout block (~1467 LOC)
+   moved to src/css/mobile-layout.css 2026-05-08 (Phase 3 D3 ext2).
+   Original location: lines 2047-3513. The block lived here next to
+   the now-watching bar and chip rules above and the translation tabs
+   below. After extract, those neighbours are now adjacent in this
+   file, which is harmless - none of them target the same selectors
+   as anything inside the mobile @media block (overlap check ran
+   before extraction; see mobile-layout.css preamble for details). */
+
+
+/* ── Translation Section Tabs ─────────────────────── */
+.section-lang-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 8px;
+}
+.section-lang-tab {
+  padding: 5px 12px;
+  font-size: 11px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.section-lang-tab:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.section-lang-tab:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  border-left: none;
+}
+.section-lang-tab.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.section-lang-tab:hover:not(.active) {
+  background: var(--accent-light);
+  color: var(--text-secondary);
+}
+
+/* Transcript panel alignment moved to transcript.css */
+
+/* Placeholder tab (before language selected) */
+.section-lang-tab.placeholder {
+  opacity: 0.5;
+  font-style: italic;
+  letter-spacing: 0.5px;
+}
+.section-lang-tab.placeholder:hover {
+  opacity: 0.8;
+  background: var(--accent-light);
+  color: var(--text-secondary);
+}
+
+/* Chat panel dark variant */
+.chat-panel .section-lang-tabs {
+  margin: 0 12px 8px;
+}
+.chat-panel .section-lang-tab {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.4);
+}
+.chat-panel .section-lang-tab.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.chat-panel .section-lang-tab:hover:not(.active) {
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.6);
+}
+.chat-panel .section-lang-tab.placeholder {
+  opacity: 0.35;
+}
+.chat-panel .section-lang-tab.placeholder:hover {
+  opacity: 0.6;
+}
+
+/* Switch-all button (in tab-bar) */
+.lang-switch-all {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-left: 4px;
+}
+.lang-switch-all:hover {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent-hover);
+}
+.lang-switch-all.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.lang-switch-all.visible {
+  display: inline-flex;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BILINGUAL INLINE STYLES
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Language button group (pill) ──────────────────────── */
+.lang-group {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+}
+
+/* ── Flag buttons + bilingual button (Option G) ── */
+.lang-flag-btn,
+.lang-collapse-btn {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px 5px;
+  font-size: 14px; line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s;
+  overflow: hidden;
+}
+.lang-flag-btn:hover,
+.lang-collapse-btn:hover { background: var(--accent-light); }
+/* ── Active glow (teal, outer + inner) ── */
+.lang-btn-active {
+  filter: drop-shadow(0 0 4px rgba(8,145,178,0.7)) drop-shadow(0 0 8px rgba(8,145,178,0.35));
+  box-shadow: inset 0 0 8px rgba(8,145,178,0.4);
+}
+
+/* ── Dual-flag inner layout ── */
+.lang-collapse-btn { padding: 0; }
+.bilingual-btn-flags {
+  display: flex;
+  gap: 0;
+  font-size: 14px;
+  line-height: 1;
+}
+.bilingual-btn-flags > span {
+  display: inline-block;
+  width: 0.6em;
+  overflow: hidden;
+  font-size: 16px;
+  line-height: 1;
+  text-align: right;
+}
+.bilingual-btn-flags > span:first-child {
+  border-right: 1px solid var(--border);
+}
+
+/* ── Globe button (standalone) ───────────────────────── */
+.lang-group-btn {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px; font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.lang-group-btn:hover { background: var(--accent-light); color: var(--accent); }
+
+/* ── Lang bar (sticky row below tab bar) ─────────────── */
+.lang-bar {
+  display: flex;
+  align-items: center;
+  padding: 6px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 6px;
+}
+.lang-bar.visible { display: flex; }
+.lang-bar .tab-btn-bookmarks { margin-left: auto; }
+
+/* ── Bilingual controls (hidden until lang selected) ──── */
+.bilingual-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  max-width: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: max-width 0.25s ease-out, opacity 0.2s ease-out;
+}
+.bilingual-controls.visible { max-width: 200px; opacity: 1; pointer-events: auto; overflow: visible; }
+
+/* Mobile: hide the whole control strip ONLY before any translation section
+   has completed. Once the FIRST section finishes (summary, chapters, OR
+   transcript — whichever wins), .hide-pre-ready is removed and the buttons
+   appear. From that point they stay visible; per-tab `.pending` controls
+   the disabled state when the user navigates to a tab whose specific
+   content isn't ready yet (e.g., summary still loading while transcript
+   already done). Desktop ignores this hide rule — buttons there keep the
+   disabled-state visible for instant feedback that the bar exists.
+
+   Selector must include both #mobileFloatingFlags AND #bilingualControls IDs
+   to out-specify the mobile-only rule `#mobileFloatingFlags #bilingualControls
+   { display: flex !important; }` further down (200 specificity + !important).
+   Class-only selectors lose the cascade fight even with !important. */
+@media (max-width: 900px) {
+  #mobileFloatingFlags #bilingualControls.visible.hide-pre-ready { display: none !important; }
+}
+
+.bilingual-progress {
+  display: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent, #0891b2);
+  opacity: 0.85;
+  min-width: 2.2em;
+  text-align: center;
+}
+
+/* ── Base sub style (G layout — inline, teal, italic) ──── */
+.bilingual-sub {
+  color: var(--accent);
+  font-style: italic;
+  line-height: 1.6;
+  margin-top: 2px;
+  cursor: pointer;
+  transition: opacity 0.25s;
+  direction: ltr;
+  text-align: left;
+}
+.bilingual-sub-hidden { display: none; }
+
+/* #summaryContent > .bilingual-sub moved to summary.css */
+/* Chapter bilingual subs moved to chapters.css */
+/* Transcript bilingual subs moved to transcript.css */
+
+/* ── Switched mode ─────────────────────────────────────── */
+/* Text content is swapped by JS (_applySwitch), so elements keep their base styling.
+   The bilingual-mode-switched class is only used for RTL/font overrides below. */
+/* ── RTL target language subs ────────────────────────────── */
+body[data-translate-lang="fa"] .bilingual-sub,
+body[data-translate-lang="ar"] .bilingual-sub,
+body[data-translate-lang="he"] .bilingual-sub,
+body[data-translate-lang="ur"] .bilingual-sub { direction: rtl; text-align: right; }
+
+body[data-translate-lang="fa"] .bilingual-sub { font-family: 'Vazirmatn', sans-serif; line-height: 1.75; }
+body[data-translate-lang="ar"] .bilingual-sub { font-family: 'Noto Sans Arabic', sans-serif; line-height: 1.75; }
+body[data-translate-lang="he"] .bilingual-sub { font-family: 'Noto Sans Hebrew', sans-serif; line-height: 1.75; }
+
+/* Chat bubble font — driven PER BUBBLE via the lang-X class stamped on each
+   bubble at creation time (chat.js _tagBubbleLang). Old body[data-translate-
+   lang="..."] selectors used to re-font every bubble on every language
+   switch, even though each bubble's actual text is frozen in the language it
+   was written in — switching to Persian made the user's old English bubbles
+   render in Vazirmatn (and vice versa). Per-bubble rules pin typography to
+   the original language. !important wins over the desktop/mobile chat-overlay
+   theme defaults that would otherwise impose a single font across the whole
+   chat. :not(.gb-display) excludes the greeting bubble — see .gb-display.
+   lang-fa rules nearer the top of this file. */
+/* Per-language chat-bubble font selection is handled by the cascade:
+   .chat-bubble uses var(--font-content-chat), which falls back through
+   var(--font-i18n) to find the right script font (Vazirmatn for Persian,
+   Noto Sans Arabic for Arabic, etc). Theme variation = redefine
+   --font-content-chat at body.theme-X.
+
+   Direction comes from the .rtl/.ltr class chat.js stamps on each
+   bubble. Line-height per script is the only layout tweak left here —
+   dense scripts (Persian/Arabic/Hebrew/CJK) need more breathing room
+   than Latin's default 1.55 (which lives on .chat-bubble base). */
+.chat-bubble.lang-fa:not(.gb-display),
+.chat-bubble.lang-ar:not(.gb-display),
+.chat-bubble.lang-he:not(.gb-display),
+.chat-bubble.lang-ur:not(.gb-display),
+.chat-bubble.lang-zh:not(.gb-display),
+.chat-bubble.lang-zh-tw:not(.gb-display),
+.chat-bubble.lang-ja:not(.gb-display),
+.chat-bubble.lang-ko:not(.gb-display) { line-height: 1.75; }
+
+/* Per-language chip font selection is handled by the cascade:
+   .chat-chip uses var(--font-content-heading), which falls back through
+   var(--font-i18n) to find the right script font (Vazirmatn for Persian,
+   Noto Sans Arabic for Arabic, etc). No per-language !important rules
+   needed — adding a new language requires zero chip CSS changes. */
+
+/* Context-specific RTL overrides */
+/* transcript-list bilingual sub overrides moved to transcript.css */
+/* .chapters-list/.chapter-item bilingual sub overrides moved to chapters.css */
+/* #summaryContent > .bilingual-sub RTL rules moved to summary.css */
+
+/* RTL chapter column swap (switched mode) moved to chapters.css */
+
+/* RTL chapter subs padding flips moved to chapters.css */
+/* transcript-list bilingual sub padding flips moved to transcript.css */
+
+/* Switched-mode .context-block/.context-label rules moved to summary.css */
+
+/* When switched: translated text is now in the original elements */
+/* .ts-text switched-mode rules moved to transcript.css */
+/* switched-mode .chapter-name RTL rules moved to chapters.css */
+/* Switched-mode .summary-quick-text/.context-text rules moved to summary.css */
+
+/* When switched: subs (now showing original LTR text) should reset to LTR */
+body.bilingual-mode-switched[data-translate-lang="fa"] .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="ar"] .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="he"] .bilingual-sub,
+body.bilingual-mode-switched[data-translate-lang="ur"] .bilingual-sub { direction: ltr; text-align: left; font-family: 'Inter', sans-serif; line-height: 1.65; }
+/* switched-mode chapter bilingual sub resets moved to chapters.css */
+/* transcript-list switched-mode bilingual subs moved to transcript.css */
+
+/* .bilingual-sub .summary-highlight rules moved to summary.css */
+
+/* Neobrutalist theme reskin (~1411 LOC) moved to src/css/brutalist.css
+   2026-05-08 (Phase 3 D3 ext). Original location: lines 3837-5247.
+   Some scattered body.theme-brutalist rules remain in this file
+   (token redefine near :root, .gb-host/.gb-display per-display rules,
+   mobile @media chip/tab overrides). They stay because their
+   nearest-cascade neighbours are non-brutalist rules in this file -
+   splitting them would shift cascade order. */
+
+
+/* ── Flat Transcript (mobile only) ── */
+@media (max-width: 900px) {
+  .flat-transcript {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden !important;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    margin: 14px;
+    padding: 8px 0;
+    height: calc(100% - 28px);
+  }
+  .flat-transcript-outer {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    min-height: 320px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* ── Mobile transcript/subtitle text size ──
+     All scripts get font-size: 15px and line-height: 1.6 on mobile so
+     single-lang mode reads with consistent visual density regardless of
+     language. Without this default, base .ts-text { font-size: 14px }
+     wins for Latin while the per-script rules below bump non-Latin to
+     15px — producing the "English looks 1px smaller than Persian" bug
+     reported in v2.1 testing. Apply the bump universally to every
+     transcript/subtitle text element on mobile. */
+  #fullTranscriptPanel .ts-text { font-size: 15px; line-height: 1.6; }
+  /* Per-script font rules below are now redundant for size — kept for
+     defensive coverage of the script-disambiguation pattern. Font face
+     itself comes from --font-content-body cascade + the disambiguation
+     block in this file. */
+  #fullTranscriptPanel.lang-fa .ts-text { font-family: 'Vazirmatn', sans-serif; font-size: 15px; line-height: 1.6; }
+  #fullTranscriptPanel.lang-ar .ts-text { font-family: 'Noto Sans Arabic', sans-serif; font-size: 15px; line-height: 1.6; }
+  #fullTranscriptPanel.lang-he .ts-text { font-family: 'Noto Sans Hebrew', sans-serif; font-size: 15px; line-height: 1.6; }
+  /* Bilingual secondary text: when secondary language is fa/ar/he, switch
+     to the matching script font. The body[data-translate-lang] selector
+     matches the *secondary* language regardless of which side it's
+     rendered on (handles bilingual-cols-swapped too). */
+  body[data-translate-lang="fa"] #fullTranscriptPanel.bilingual-active .flat-transcript-content .ts-sub { font-family: 'Vazirmatn', sans-serif; font-size: 15px; line-height: 1.6; }
+  body[data-translate-lang="ar"] #fullTranscriptPanel.bilingual-active .flat-transcript-content .ts-sub { font-family: 'Noto Sans Arabic', sans-serif; font-size: 15px; line-height: 1.6; }
+  body[data-translate-lang="he"] #fullTranscriptPanel.bilingual-active .flat-transcript-content .ts-sub { font-family: 'Noto Sans Hebrew', sans-serif; font-size: 15px; line-height: 1.6; }
+  /* ── Mobile auto-scroll toggle (tall pill, scroll arrows) ── */
+  .mobile-autoscroll-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    bottom: 16px;
+    right: 14px;
+    z-index: 20;
+    width: 32px;
+    height: 44px;
+    border-radius: 999px;
+    padding: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  }
+  .mobile-autoscroll-toggle:active { transform: scale(0.9); }
+  .mobile-autoscroll-toggle svg { flex-shrink: 0; pointer-events: none; }
+
+  /* Neon Cyan Pop */
+  .mobile-autoscroll-toggle {
+    border: 1px solid rgba(31,41,55,0.4); background: transparent; color: #9CA3AF;
+  }
+  .mobile-autoscroll-toggle.on {
+    background: transparent; color: #22D3EE; border-color: #22D3EE; border-width: 2px; box-shadow: 0 0 16px rgba(34,211,238,0.3);
+  }
+
+  /* ── Mobile "Jump to Now" button ── */
+  .mobile-jump-to-now {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    bottom: 68px;
+    right: 14px;
+    z-index: 20;
+    width: 32px;
+    height: 44px;
+    border-radius: 999px;
+    padding: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    border: 1px solid rgba(31,41,55,0.4);
+    background: transparent;
+    color: #9CA3AF;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+    transition: opacity 0.25s, transform 0.25s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  }
+  .mobile-jump-to-now.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+  .mobile-jump-to-now:active { transform: scale(0.9); }
+  .mobile-jump-to-now svg { flex-shrink: 0; pointer-events: none; }
+
+}
+
+/* ── Subsequent-paste fade ───────────────────────────────────────────
+   When the user pastes a new YouTube URL while already on the results
+   view, we skip the full VHS-rewind morph and instead do a fast 250ms
+   crossfade: video → black, content (title / chapters / summary /
+   transcript / chat) → invisible. The panel scaffolding (left/center/
+   chat panels, tab buttons, controls) stays put so the page doesn't
+   reflow. body.paste-fading is added by processUrl() in app.js right
+   before the new pipeline runs and removed once the new content is in
+   the DOM. The transition lives on the always-on rule so removing the
+   class fades content back IN (not a snap). */
+.nw-title,
+.nw-meta,
+#titleDisplayHost,
+#videoDate,
+#topicsList,
+#chaptersTabList,
+.chapters-list,
+#summaryDisplayHost,
+#summaryContent,
+#fullTranscriptPanel,
+.chat-messages {
+  transition: opacity 250ms ease-out;
+}
+body.paste-fading .nw-title,
+body.paste-fading .nw-meta,
+body.paste-fading #titleDisplayHost,
+body.paste-fading #videoDate,
+body.paste-fading #topicsList,
+body.paste-fading #chaptersTabList,
+body.paste-fading .chapters-list,
+body.paste-fading #summaryDisplayHost,
+body.paste-fading #summaryContent,
+body.paste-fading #fullTranscriptPanel,
+body.paste-fading .chat-messages {
+  opacity: 0;
+}
+
+/* Black cover that hides the previous video while we swap in the new
+   one. Sits inside .video-frame on top of the iframe (z-index 8 keeps
+   it above the YT iframe and any leftover .rewind-cover at z-index 5).
+   Toggled visible/hidden via the .visible class so the same 250ms ease
+   handles both directions. Removed from the DOM once the new video
+   reaches PLAYING (or after a safety timeout) by app.js. */
+.video-black-cover {
+  position: absolute; inset: 0;
+  z-index: 8;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 250ms ease-out;
+}
+.video-black-cover.visible { opacity: 1; }
+
+/* Mobile: the iframe is masked with a left-to-right fade (transparent 0%→23%,
+   opaque from 43% on) so the left ~30% of .video-frame is visually empty,
+   letting the title and the .video-block::after bezel art show through. The
+   black cover MUST follow the same mask — otherwise it paints a hard-edged
+   black rectangle over the title + bezel area, which reads as "ugly big black
+   square rendered on top of the frame instead of under it" (user's words).
+   With the mask applied, the cover only obscures the actual visible iframe
+   pixels and the title/bezel stay where they are. */
+@media (max-width: 900px) {
+  .video-black-cover {
+    /* Matches the iframe's translateX(15%) + adjusted mask above so the
+       black cover sits over the same shifted iframe pixels and lets the
+       title show through at the same place. Without the matching transform,
+       the cover would paint on the un-shifted left edge and look offset
+       relative to the (now-shifted) iframe content. */
+    transform: translateX(15%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 8%, black 28%);
+    mask-image: linear-gradient(to right, transparent 0%, transparent 8%, black 28%);
+  }
+}
+
+/* ── Mobile chat panel: light variant for brutalist + light themes ──
+   Desktop chat keeps its dark side-column look on every theme. On mobile,
+   when the chat opens via .mobile-chat-overlay, brutalist + light themes
+   render it light (using each theme's --bg / --surface) so it feels at
+   home alongside the rest of the page. Dark themes are intentionally
+   excluded — they stay dark.
+   Specificity note: body.theme-mode-brutalist .mobile-chat-overlay .chat-panel
+   (3 classes) beats body.theme-brutalist .chat-panel (2 classes), so the
+   brutalist desktop overrides (#060D14 chat bg, dark header/messages/bubbles)
+   are properly overridden inside the overlay only. */
+@media (max-width: 900px) {
+  body.theme-mode-light .mobile-chat-overlay,
+  body.theme-mode-brutalist .mobile-chat-overlay,
+  body.theme-mode-light .mobile-chat-overlay .chat-panel,
+  body.theme-mode-brutalist .mobile-chat-overlay .chat-panel {
+    background: var(--bg);
+  }
+
+  body.theme-mode-light .mobile-chat-overlay .chat-header,
+  body.theme-mode-brutalist .mobile-chat-overlay .chat-header {
+    border-bottom-color: var(--border);
+    background: var(--bg);
+  }
+  /* "AI Chat" title — pop it on the light surface. The default uses
+     --text-muted which renders almost invisible against --bg in
+     brutalist's pale palette. Bump to primary text + tighter spacing
+     so it reads as the panel's heading rather than ambient label. */
+  body.theme-mode-light .mobile-chat-overlay .chat-title,
+  body.theme-mode-brutalist .mobile-chat-overlay .chat-title {
+    color: var(--text-primary) !important;
+    font-family: 'Bebas Neue', sans-serif !important;
+    font-size: 18px !important;
+    font-weight: 400 !important;
+    letter-spacing: 2.4px !important;
+    text-transform: uppercase !important;
+    line-height: 1 !important;
+  }
+
+  /* Maximize / restore button. Lives in the chat header, pushed to the
+     right via margin-left:auto. Icon-only, transparent background,
+     accent-coloured stroke that picks up the active theme. */
+  .mobile-chat-overlay .chat-maximize-btn {
+    margin-left: auto;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid color-mix(in srgb, var(--text-muted) 35%, transparent);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    flex-shrink: 0;
+  }
+  .mobile-chat-overlay .chat-maximize-btn:hover,
+  .mobile-chat-overlay .chat-maximize-btn:active {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+  }
+  .mobile-chat-overlay .chat-maximize-btn svg { width: 16px; height: 16px; }
+  .mobile-chat-overlay .chat-maximize-btn .ic-restore { display: none; }
+  .mobile-chat-overlay.maximized .chat-maximize-btn .ic-maximize { display: none; }
+  .mobile-chat-overlay.maximized .chat-maximize-btn .ic-restore { display: inline-block; }
+  /* Re-show the button once the panel is nested inside the mobile
+     overlay (the global rule above hides it everywhere by default). */
+  .mobile-chat-overlay .chat-maximize-btn { display: inline-flex; }
+
+  /* Maximized state — overlay grows to fill the viewport. Drop the
+     rounded top so the panel reads as a true full-screen take-over
+     rather than a really-tall sheet. The 66dvh default (set above)
+     is the un-maximized state. */
+  .mobile-chat-overlay.maximized {
+    height: 100vh !important;
+    height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+
+  /* YouTube-style AI message — no bubble. The response sits inline with
+     the panel like book text: transparent background, no border, no
+     rounded shape, full horizontal width. Shark icon serves as the
+     speaker indicator (label text is hidden). */
+  body.theme-mode-light .mobile-chat-overlay .bubble-ai,
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-ai {
+    background: transparent !important;
+    color: var(--text-primary) !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 4px 0 !important;
+  }
+
+  body.theme-mode-light .mobile-chat-overlay .chat-panel .section-lang-tab,
+  body.theme-mode-brutalist .mobile-chat-overlay .chat-panel .section-lang-tab {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text-secondary);
+  }
+
+  body.theme-mode-light .mobile-chat-overlay .chat-input-area,
+  body.theme-mode-brutalist .mobile-chat-overlay .chat-input-area {
+    border-top-color: var(--border);
+    background: var(--bg);
+  }
+
+  /* User bubble — kill brutalist's transparent dark fill + mustard text +
+     yellow border-left accent (the "shorter first column" leak). Use a
+     warm earthy tan fill with cream text — same color family as the
+     cream `--bg` surrounding it but stepped down ~40% in lightness, so
+     the bubble reads as a darker shade of the chat bg rather than a
+     foreign black slab. Pure-white text turns clinical against this
+     warm bg, so we use a cream-tinted white that ties the palette
+     together. */
+  body.theme-mode-light .mobile-chat-overlay .bubble-user,
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-user {
+    background: #A88762 !important;
+    color: #FFF8E8 !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 7px 11px !important;
+    max-width: 86% !important;
+    width: auto !important;
+    align-self: flex-end !important;
+    border-bottom-right-radius: 4px !important;
+  }
+  /* User bubble label ("You") — drop entirely. The right-aligned dark
+     bubble is unambiguous on its own (matches YouTube / iMessage). */
+  body.theme-mode-light .mobile-chat-overlay .bubble-user .bubble-label,
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-user .bubble-label {
+    display: none !important;
+  }
+
+  /* Entity colors inside the user bubble on mobile.
+     The bubble bg is warm tan (#A88762). Two earlier palettes failed:
+       1. The brutalist desktop default uses LIGHT cool tones (violet-300,
+          etc.) designed for a dark navy bg — washed out on tan (~2:1).
+       2. The mobile-AI dark palette (violet-800, navy-900, etc.) is
+          designed for cream bg — the cool saturated darks clash visually
+          with the warm tan even though contrast technically passes.
+     This palette uses light WARM pastels — pinks, peaches, mint, gold —
+     that pop against the tan bg the way marker highlights pop on warm
+     paper. All tones stay in the warm/light family so they harmonize
+     with the bubble color instead of fighting it. Each entity type still
+     gets its own color so the type distinction isn't lost.
+     !important needed to beat the brutalist user-bubble rule that's
+     higher up in the cascade with same specificity. */
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-user .tx-name      { color: #FFE680 !important; }  /* warm gold — names */
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-user .tx-org       { color: #FED7AA !important; }  /* peach cream */
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-user .tx-gpe       { color: #A7F3D0 !important; }  /* mint cream */
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-user .tx-event     { color: #DDD6FE !important; }  /* lavender cream */
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-user .tx-date      { color: #FFCC80 !important; }  /* orange cream */
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-user .tx-num       { color: #86EFAC !important; }  /* light green */
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-user .tx-discourse { color: #BAE6FD !important; }  /* sky cream */
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-user .tx-exclaim   { color: #FECACA !important; }  /* pink cream */
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-user .tx-punct     { color: #FEF3C7 !important; }  /* light yellow */
+
+  /* Richer body font for brutalist's chat bubbles on the light surface —
+     JetBrains Mono reads sparse on a cream bg, swap to the brutalist body
+     font (Space Grotesk) which has more weight and warmth. AI bubble keeps
+     its proper rounded shape too (brutalist forces border-radius:0 + full
+     width on desktop; on a light overlay we want a normal bubble look). */
+  body.theme-mode-brutalist .mobile-chat-overlay .chat-bubble {
+    /* Brutalist mobile chat uses Space Grotesk (warmer than the
+       desktop JetBrains Mono on a light bg). var(--font-i18n) tail
+       is required so non-Latin chat content (Persian/Arabic/CJK/etc.)
+       cascades to the right script font. */
+    font-family: 'Space Grotesk', var(--font-i18n) !important;
+    font-weight: 500;
+  }
+  body.theme-mode-light .mobile-chat-overlay .chat-bubble,
+  body.theme-mode-brutalist .mobile-chat-overlay .chat-bubble {
+    font-size: 16px !important;
+  }
+  /* Per-language fonts on mobile chat are handled by the cascade now —
+     .chat-bubble's font-family (or the brutalist override above) ends in
+     var(--font-i18n), so Persian/Arabic/CJK/etc. cascade to the right
+     script font automatically. No per-language !important rules needed. */
+  /* AI message takes the FULL panel width (book-text style). User
+     bubbles still size to their content + right-align. */
+  body.theme-mode-light .mobile-chat-overlay .bubble-ai,
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-ai {
+    width: 100% !important;
+    max-width: 100% !important;
+    align-self: stretch !important;
+  }
+  body.theme-mode-light .mobile-chat-overlay .gb-host,
+  body.theme-mode-brutalist .mobile-chat-overlay .gb-host {
+    width: 100% !important;
+    max-width: 100% !important;
+    align-self: stretch !important;
+  }
+  /* User bubble keeps the 86% max-width cap from the chat-bubble base
+     rule above (which we just removed for AI), restate explicitly. */
+  body.theme-mode-light .mobile-chat-overlay .bubble-user,
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-user {
+    max-width: 86% !important;
+  }
+  /* Breathing room between messages — bigger gap reads better when AI
+     responses are flush text rather than bubble-contained. */
+  body.theme-mode-light .mobile-chat-overlay .chat-messages,
+  body.theme-mode-brutalist .mobile-chat-overlay .chat-messages {
+    gap: 18px !important;
+  }
+  /* Defeat brutalist's desktop AI overrides (border-left teal, rounded,
+     padding) — we want completely flat inline text on mobile light. */
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-ai {
+    border-left: none !important;
+    border-right: none !important;
+  }
+
+  /* Input box — flip from brutalist's dark navy + mustard text to the
+     theme's light surface + primary text. Light themes already use tokens
+     correctly but the !important brutalist rules force-dark them, so the
+     scoped !important here wins. */
+  body.theme-mode-light .mobile-chat-overlay .chat-input,
+  body.theme-mode-brutalist .mobile-chat-overlay .chat-input {
+    background: var(--surface) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 500 !important;
+    font-size: 16px !important;
+  }
+  body.theme-mode-light .mobile-chat-overlay .chat-input::placeholder,
+  body.theme-mode-brutalist .mobile-chat-overlay .chat-input::placeholder {
+    color: var(--text-muted) !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 400 !important;
+  }
+  body.theme-mode-light .mobile-chat-overlay .chat-input:focus,
+  body.theme-mode-brutalist .mobile-chat-overlay .chat-input:focus {
+    background: var(--surface) !important;
+    border-color: var(--accent) !important;
+    box-shadow: none !important;
+  }
+
+  body.theme-mode-light .mobile-chat-overlay .chat-hint,
+  body.theme-mode-brutalist .mobile-chat-overlay .chat-hint {
+    color: var(--text-muted);
+  }
+
+  /* Send + mic buttons — flip from brutalist's dark-navy fill (and the
+     default mic's --nav-bg dark fill) to a light surface that matches
+     the rest of the chat. Accent border + accent icon, transparent fill. */
+  body.theme-mode-light .mobile-chat-overlay .btn-send,
+  body.theme-mode-brutalist .mobile-chat-overlay .btn-send {
+    background: transparent !important;
+    color: var(--accent) !important;
+    border: 1.5px solid color-mix(in srgb, var(--accent) 40%, transparent) !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+  body.theme-mode-light .mobile-chat-overlay .btn-mic,
+  body.theme-mode-brutalist .mobile-chat-overlay .btn-mic {
+    background: transparent !important;
+    color: var(--accent) !important;
+    border: 1.5px solid color-mix(in srgb, var(--accent) 40%, transparent) !important;
+    box-shadow: none !important;
+  }
+  body.theme-mode-light .mobile-chat-overlay .btn-mic svg,
+  body.theme-mode-brutalist .mobile-chat-overlay .btn-mic svg {
+    filter: none !important;
+  }
+
+  /* Timestamp chips inside chat bubbles — use the theme's warm-highlight
+     token (brutalist yellow #FFD100, gold/amber on light themes) with
+     dark text. Reads like a brutalist highlighter mark — coherent with
+     the rest of the theme, distinct from RECAPSHARK.COM's brand teal,
+     and not in-your-face. Rectangular shape (4px), no pill. */
+  body.theme-mode-light .mobile-chat-overlay .chat-ts,
+  body.theme-mode-brutalist .mobile-chat-overlay .chat-ts {
+    background: var(--highlight-warm) !important;
+    color: var(--text-primary) !important;
+    border: none !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 11.5px !important;
+    padding: 2px 7px 2px 5px !important;
+    border-radius: 4px !important;
+    box-shadow: none !important;
+  }
+  body.theme-mode-light .mobile-chat-overlay .chat-ts:hover,
+  body.theme-mode-brutalist .mobile-chat-overlay .chat-ts:hover {
+    background: color-mix(in srgb, var(--highlight-warm) 85%, black) !important;
+    color: var(--text-primary) !important;
+  }
+
+  /* AI label — show only the shark icon, hide the "RecapShark.com" text
+     node. font-size:0 collapses the text node; img sizing is restated
+     explicitly so it stays visible at a comfortable size. */
+  body.theme-mode-light .mobile-chat-overlay .bubble-ai .bubble-label,
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-ai .bubble-label {
+    font-size: 0 !important;
+    line-height: 0 !important;
+    letter-spacing: 0 !important;
+    margin-bottom: 8px !important;
+    gap: 0 !important;
+    color: transparent !important;
+  }
+  body.theme-mode-light .mobile-chat-overlay .bubble-ai .bubble-label .label-shark,
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-ai .bubble-label .label-shark,
+  body.theme-mode-light .mobile-chat-overlay .bubble-ai .bubble-label img,
+  body.theme-mode-brutalist .mobile-chat-overlay .bubble-ai .bubble-label img {
+    height: 12px !important;
+    width: auto !important;
+    display: block !important;
+  }
+
+  /* Hide the "Ready to Feed" shark/text watermark sitting behind the
+     chat — duplicate logo bleeding through the YouTube-style flat
+     responses. Drop it everywhere on mobile light/brutalist (not just
+     when nested under .mobile-chat-overlay) so it never flashes during
+     the panel-move transition. */
+  body.theme-mode-light #chatEmptyState,
+  body.theme-mode-brutalist #chatEmptyState,
+  body.theme-mode-light .chat-empty-state,
+  body.theme-mode-brutalist .chat-empty-state {
+    display: none !important;
+  }
+}
+
+/* Script-disambiguation matrix (Arabic / Japanese / Traditional Chinese /
+   Korean per-script font-family chains) was extracted to
+   src/css/font-matrix.css 2026-05-08 (Phase 3 D3). All rules in that
+   file carry intentional "font-system: intentional" markers (kept
+   without comment-syntax here to avoid nested-comment parse errors —
+   see the actual file for the marker convention). */
+
+/* Music-only state rules (.music-only-badge, .transcript-music-only-*,
+   body.is-mostly-music *) were extracted to src/css/music-only.css
+   2026-05-08 (Phase 3 D3). */

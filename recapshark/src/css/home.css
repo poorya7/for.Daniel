@@ -1,0 +1,417 @@
+/* ═══════════════════════════════════════════════════════════
+   font-system: hardcoded font-family declarations in this file are all
+   intentional brand UI on the LANDING page (hero h1, paste button,
+   shark bubble, stats, feature row, mech panel). Brand fonts:
+   Unbounded, Fredoka, Syne, JetBrains Mono, Bebas Neue, Space Grotesk.
+
+   The landing page never displays user-generated or translated content,
+   so these are explicitly Latin-display-only. The hero h1 + ts1-hero
+   include var(--font-i18n) defensively for the rare case that the
+   bubble-content or speech-bubble strings get localized in future.
+
+   Iteration 4 broke this file by bulk-applying var(--font-i18n) to
+   every brand element — DO NOT repeat that. Brand stays brand.
+
+   See docs/_tech/13_LANGUAGE_AND_FONTS.md.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Home Page ── */
+.home-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  /* Cream up to 100svh (smallest viewport = URL bar fully expanded), dark
+     below. When iOS Safari collapses its URL bar mid-morph, body's clip
+     edge moves down past 100svh and the previously-clipped portion of
+     home-view becomes visible — painting it dark there means the user
+     sees a continuous dark band where Safari's chrome was, instead of a
+     cream flash. Scoped to home-view, so zero impact on the video page. */
+  /* Shell color below viewport uses --nav-bg so it tracks the active theme
+     instead of staying brutalist-dark-navy for light/dark themes. */
+  background: linear-gradient(
+    to bottom,
+    var(--bg),
+    var(--bg) 100svh,
+    var(--nav-bg) 100svh,
+    var(--nav-bg)
+  );
+  overflow: hidden;
+}
+
+/* Top bar */
+.home-topbar { height: 52px; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 0 24px; flex-shrink: 0; }
+.home-brand-logo { display: flex; align-items: center; }
+.home-brand-logo img { height: 22px; width: auto; }
+.home-brand-logo .home-sharky { height: 26px; filter: none; margin-right: 4px; }
+.logo-recap { filter: invert(10%) sepia(30%) saturate(800%) hue-rotate(170deg) brightness(30%); }
+.logo-com   { filter: invert(10%) sepia(30%) saturate(800%) hue-rotate(170deg) brightness(30%); }
+.logo-shark-img { height: 22px; width: auto; }
+.home-yt-badge { display: inline-flex; align-items: center; gap: 6px; background: #0C1E2A; color: white; padding: 4px 10px; font-family: 'Space Grotesk', sans-serif; font-size: clamp(9px, 0.8vw, 11px); font-weight: 700; letter-spacing: 0.06em; border-radius: 4px; }
+.home-yt-dot { width: 7px; height: 7px; background: #FF3B3B; border-radius: 2px; flex-shrink: 0; }
+
+/* Hero */
+.hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; padding: 0 24px; }
+
+/* Headline */
+h1 { font-family: 'Unbounded', sans-serif; font-size: clamp(38px, 8vw, 72px); font-weight: 900; line-height: 0.9; color: #0C1E2A; letter-spacing: -0.03em; text-align: center; }
+h1 .red { color: #FFD100; }
+h1 .yellow { color: #FF2D78; -webkit-text-stroke: 2.5px #0C1E2A; }
+
+/* Shark + Speech Bubble */
+.shark-bubble-wrap { position: relative; width: 100%; max-width: 420px; margin-top: 21px; }
+.shark-float { position: absolute; z-index: 10; pointer-events: none; left: 205px; top: 82px; }
+.shark-char { width: 207px; filter: drop-shadow(3px 4px 0 rgba(0,0,0,0.09)); display: block; }
+
+.speech-bubble {
+  position: relative;
+  background: #C8EEF5;
+  border-radius: 0;
+  border: none;
+  padding: clamp(14px, 2vh, 20px) clamp(16px, 2vw, 26px);
+  min-height: 120px;
+  filter: drop-shadow(0 8px 16px rgba(8,145,178,0.4)) drop-shadow(0 2px 4px rgba(8,145,178,0.25));
+  font-family: 'Fredoka', sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: #0C4A5A;
+  line-height: 1.55;
+  width: 100%;
+}
+.speech-bubble::before {
+  content: '';
+  position: absolute;
+  bottom: -18px; left: 205px; transform: translateX(-50%);
+  width: 24px; height: 18px;
+  background: #C8EEF5;
+  clip-path: polygon(0 0, 100% 0, 75% 100%);
+}
+.speech-bubble .mark-red {
+  background: #FF3B3B; padding: 1px 6px 1px 5px; border-radius: 4px;
+  color: white; font-weight: 800; font-family: 'Syne', sans-serif !important; font-size: 14px;
+}
+.speech-bubble .mark-yellow {
+  background: #FFD100; padding: 1px 6px 1px 5px; border-radius: 4px;
+  color: #0C1E2A; font-weight: 800; font-family: 'Syne', sans-serif !important; font-size: 14px;
+}
+.speech-bubble .mark-cyan {
+  background: #0891B2; padding: 1px 6px 1px 5px; border-radius: 4px;
+  color: white; font-weight: 800; font-family: 'Syne', sans-serif !important; font-size: 14px;
+}
+.speech-bubble .mark-soft-cyan { background: #0C4A5A; color: #C8EEF5; padding: 1px 5px; border-radius: 3px; font-weight: 600; }
+.speech-bubble .mark-soft-yellow { background: #C89700; color: #FFF8E8; padding: 1px 5px; border-radius: 3px; font-weight: 600; }
+
+/* CTA — Stripe-style pill: input + button in one rounded row. No clipboard
+   permission popup because the input handles paste natively. */
+.cta-group { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; max-width: 520px; margin-top: 69px; }
+.paste-pill {
+  position: relative; z-index: 20;
+  display: flex; align-items: stretch;
+  width: 86%; max-width: 520px;
+  background: #fff;
+  border: 1.5px solid #0C1E2A;
+  border-radius: 16px;
+  padding: 6px;
+  box-shadow: 0 8px 24px rgba(12,30,42,0.08);
+  -webkit-tap-highlight-color: transparent;
+}
+.paste-input {
+  flex: 1; min-width: 0;
+  background: transparent;
+  color: #0C1E2A;
+  border: none;
+  padding: 14px 18px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(13px, 1.2vw, 15px);
+  font-weight: 400;
+  outline: none;
+  -webkit-appearance: none;
+  border-radius: 10px;
+  -webkit-tap-highlight-color: transparent;
+}
+.paste-input::placeholder { color: rgba(12,30,42,0.35); font-weight: 400; }
+.paste-go {
+  background: #0C1E2A;
+  color: #fff;
+  border: none;
+  padding: 0 22px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(12px, 1.1vw, 14px);
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.paste-go:hover { background: #1c3340; }
+@keyframes cta-exit { 0% { opacity:1; transform:scale(1); } 60% { opacity:0.3; transform:scale(0.88); } 100% { opacity:0; transform:scale(0.82); } }
+.cta-group.exiting { animation: cta-exit 0.45s cubic-bezier(0.4,0,1,1) forwards; pointer-events: none; }
+
+/* Stats */
+.home-stats { display: flex; align-items: center; gap: clamp(16px, 3vw, 44px); }
+.home-stat { display: flex; flex-direction: column; align-items: center; }
+.home-stat-num { font-family: 'Unbounded', sans-serif; font-size: clamp(22px, 3vw, 40px); font-weight: 900; color: #0C1E2A; line-height: 1; }
+.home-stat-num .red { color: #FF3B3B; }
+.home-stat-lbl { font-size: clamp(9px, 0.85vw, 12px); font-weight: 700; color: #7AAFC0; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 3px; }
+.home-stat-divider { width: 1px; height: 32px; background: rgba(12,30,42,0.12); }
+
+/* Features row */
+.features-row { display: flex; align-items: center; gap: clamp(12px, 2vw, 28px); flex-wrap: wrap; justify-content: center; }
+.feature { display: flex; align-items: center; gap: clamp(4px, 0.5vw, 7px); }
+.feature-icon { font-size: clamp(13px, 1.4vw, 18px); }
+.feature-text { font-size: clamp(11px, 1vw, 14px); font-weight: 800; color: #0C1E2A; text-transform: uppercase; letter-spacing: 0.05em; }
+.feature-dot { width: 3px; height: 3px; background: #7AAFC0; border-radius: 50%; opacity: 0.5; }
+
+/* Home status + bubble loading (used by JS) */
+.home-status {
+  display: flex; align-items: center; gap: 12px;
+  font-family: 'Space Grotesk', sans-serif; font-size: 15px;
+  color: var(--text-secondary, #2A5A70);
+}
+.home-spinner {
+  width: 18px; height: 18px; flex-shrink: 0;
+  border: 2.5px solid var(--border, #d1d5db);
+  border-top-color: var(--accent, #0891B2);
+  border-radius: 50%; animation: home-spin 0.7s linear infinite;
+}
+@keyframes home-spin { to { transform: rotate(360deg); } }
+.bubble-tw { font-family: 'Fredoka', sans-serif; font-size: 18px; font-weight: 500; color: #0C4A5A !important; line-height: 1.55; min-height: 1.55em; }
+/* ── Initial cascade-in for the home greeting ──
+   Two-stage reveal on first page render:
+
+     Stage 1 — the bubble itself (background, drop-shadow, tail) is
+     hidden, then fades in over ~500ms. Triggered by JS removing
+     data-cascade-init from #sharkBubble.
+
+     Stage 2 — chars inside .bubble-content cascade in via the same V6
+     animation as paste/erase, but at HALF speed (~1900ms total) for
+     a more deliberate intro feel. Triggered by JS removing
+     data-cascade-init from .bubble-content AFTER stage 1 completes.
+
+   The text stays hidden through stage 1 because .bubble-content also
+   carries data-cascade-init initially. */
+/* Initial-reveal slide-up: the speech-bubble itself appears with the
+   rest of the landing page (no fade) — only the TEXT inside slides up
+   from below + fades in. The text is wrapped in .bubble-text-inner
+   so we can translate it without affecting the bubble's drop-shadow
+   or tail. .bubble-content gets overflow:hidden during the cascade so
+   the translated text doesn't briefly poke below the bubble's bottom
+   padding before reaching its resting position. */
+.speech-bubble .bubble-content { display: inline-block; width: 100%; }
+.speech-bubble .bubble-content[data-cascade-init] {
+  overflow: hidden;
+}
+.speech-bubble .bubble-content[data-cascade-init] .bubble-text-inner {
+  display: inline-block;
+  transform: translateY(30px);
+  opacity: 0;
+}
+.bubble-loading { display: flex; align-items: center; gap: 10px; }
+.bubble-loading-text { font-family: 'Fredoka', sans-serif; font-size: 18px; font-weight: 500; color: #0C4A5A; }
+.bubble-spinner {
+  width: 16px; height: 16px; flex-shrink: 0;
+  border: 2.5px solid rgba(8,145,178,0.2);
+  border-top-color: #0891B2;
+  border-radius: 50%;
+  animation: home-spin 0.7s linear infinite;
+}
+
+
+/* Mech chassis design tokens (--mech-accent / --mech-bright / --mech-glow /
+   --mech-dim / --mech-icon / --mech-text / --mech-sep) and their
+   body.casual-mode + body.theme-brutalist overrides live in
+   src/css/dashboard.css :root alongside the rest of the design tokens —
+   moved 2026-05-08 (Phase 3 B1). */
+
+/* ── Neon Fade Controller Strip ── */
+.mech-panel{position:relative;width:420px;height:100%;align-self:center;z-index:120;}
+.mech-neon-line{position:absolute;inset:auto 0 0 0;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--mech-bright) 50%,transparent),var(--mech-bright),color-mix(in srgb,var(--mech-bright) 50%,transparent),transparent);opacity:0.5;transition:opacity .4s;}
+.mech-panel.playing .mech-neon-line{opacity:1;}
+.mech-strip-wrap{position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:center;padding-top:2px;}
+.mech-strip{position:relative;display:flex;align-items:center;height:30px;padding:0 24px;}
+.mech-fade-bg{position:absolute;inset:0;pointer-events:none;}
+
+/* Dividers */
+.mech-divider{width:1px;align-self:stretch;margin:5px 0;flex-shrink:0;background:var(--mech-divider,rgba(6,182,212,0.12));}
+body.casual-mode .mech-divider{background:color-mix(in srgb, var(--accent2) 15%, transparent);}
+
+/* Status */
+.mech-status{position:relative;z-index:1;display:flex;align-items:center;gap:5px;padding:0 10px;}
+.mech-status-dot{width:5px;height:5px;border-radius:50%;background:var(--mech-accent);box-shadow:0 0 4px var(--mech-accent);transition:all .3s;}
+.mech-status-dot.live{background:#16A34A;box-shadow:0 0 6px #16A34A;}
+.mech-status-label{font-family:'JetBrains Mono',monospace;font-size:7px;font-weight:700;letter-spacing:1px;color:var(--mech-bright);opacity:0.3;transition:opacity .3s;}
+.mech-panel.playing .mech-status-label{opacity:0.7;}
+
+/* Strip buttons (shared) */
+.mech-strip-btn{display:flex;align-items:center;justify-content:center;flex-shrink:0;border:0;padding:0;cursor:pointer;border-radius:5px;background:transparent;transition:all .15s;}
+.mech-strip-btn:hover{filter:brightness(1.3);}
+.mech-strip-btn:active{transform:scale(0.95);}
+.mech-strip-btn svg{filter:drop-shadow(0 0 2px color-mix(in srgb,var(--mech-glow) 40%,transparent));}
+
+/* Nav buttons */
+.mech-nav-btn{width:33px;height:33px;background:transparent !important;border:none !important;box-shadow:none !important;}
+.mech-nav-btn svg{width:33px !important;height:33px !important;}
+
+/* Play button */
+/* Play button tinted by --accent so each theme's primary colour drives it
+   (strongly distinct per theme). Brutalist preserves its signature yellow
+   via a single scoped override in dashboard.css. */
+.mech-play-btn{width:50px;height:50px;background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);box-shadow:0 0 10px var(--mech-glow),inset 0 0 6px color-mix(in srgb,var(--mech-glow) 20%,transparent);}
+.mech-play-btn svg,
+.mech-play-btn svg path{fill:var(--accent);}
+.mech-play-btn svg{width:26px;height:26px;filter:drop-shadow(0 0 6px var(--mech-glow));}
+.mech-panel.embed-unavailable .mech-play-btn,.mech-panel.embed-unavailable .mech-nav-btn{opacity:0.45;cursor:not-allowed;pointer-events:none;}
+
+/* Transport group */
+.mech-transport{position:relative;z-index:1;display:flex;align-items:center;gap:4px;padding:0 4px;}
+
+/* Time */
+/* Font/weight routed through tokens: brutalist's Space-Grotesk-700 reading
+   is achieved via --font-body + --heading-weight it sets in themes.js. */
+.mech-time{position:relative;z-index:1;display:flex;align-items:center;gap:4px;padding:0 10px;font-family:var(--font-body);font-weight:var(--heading-weight);}
+/* Elapsed + total + separator routed through --accent so the middle
+   controller matches the scrubber (both have accent for elapsed/current
+   and a faded-accent for total/separator). Removes the "3 colors"
+   inconsistency — was hardcoded teal #0A7A9A regardless of theme. */
+.mech-time-current{font-family:'Bebas Neue',sans-serif;font-size:15px;line-height:1;color:var(--accent);letter-spacing:1px;text-shadow:0 0 8px color-mix(in srgb,var(--accent) 35%,transparent);min-width:7ch;text-align:right;}
+.mech-time-sep{font-family:'JetBrains Mono',monospace;font-size:9px;line-height:1;color:var(--accent);opacity:0.5;}
+.mech-time-total{font-family:'Bebas Neue',sans-serif;font-size:15px;line-height:1;color:var(--accent);opacity:0.5;}
+
+/* CC */
+.mech-cc-wrap{position:relative;z-index:1;padding:0 4px;}
+/* CC label uses --accent so it matches play-btn + scrubber fill + current
+   time (all emphasis elements → primary theme accent). Brutalist preserves
+   yellow via a scoped override in dashboard.css. */
+.mech-cc-label{font-family:var(--font-mono);font-size:14px;font-weight:var(--heading-weight);color:var(--accent);transition:all .2s;}
+#mechCcBtn{width:40px;height:40px;}
+#mechCcBtn.on{background:rgba(238,94,72,0.12);box-shadow:0 0 14px rgba(238,94,72,0.5),0 0 30px rgba(238,94,72,0.25),inset 0 0 8px rgba(238,94,72,0.1);}
+#mechCcBtn.on .mech-cc-label{color:#EE5E48;text-shadow:0 0 6px rgba(238,94,72,0.6);}
+
+/* Hide old nw-controls styles that might conflict */
+.now-watching-bar .nw-controls{display:none;}
+
+
+/* ── Title Style Switcher ── */
+
+/* Style 1 — Concert Poster */
+/* Title style — every previously-hardcoded colour routed through theme
+   tokens so the hero word + channel label + pipe + muted accents all
+   cycle with the active theme. Brutalist preserved via its theme.vars
+   (--nav-bg=#0C1E2A, --nav-muted=#5ABCD4, --accent2=#DC2626 close to the
+   original #FF2D78 pink, --highlight-warm=#FFD100). */
+.ts1-wrap { background: var(--nav-bg); padding: 14px 12px 12px; }
+.ts1-channel { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--nav-muted); text-align: center; margin-bottom: 5px; }
+.ts1-rule { height: 1px; background: color-mix(in srgb, var(--nav-muted) 20%, transparent); margin: 5px 0; }
+.ts1-top { font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 10px; color: #EFF9FB; text-align: center; letter-spacing: -0.01em; line-height: 1.5; margin-bottom: 2px; }
+/* Hero word — theme's secondary-accent (--accent2) with a dark shell stroke.
+   On brutalist, --accent2 = #DC2626 (red), close to the original #FF2D78.
+   This is the BASE rule for `.ts1-hero` (font, size, color, stroke). The
+   per-language script-font overrides for the title-bar instance live in
+   src/css/title.css (Phase 3 B4 audit confirmed they're correctly split). */
+.ts1-hero { display: block; font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 32px; color: var(--accent2); -webkit-text-stroke: 2.5px var(--nav-bg); paint-order: stroke fill; letter-spacing: -0.03em; text-align: center; line-height: 0.9; margin: 5px 0 4px; }
+.ts1-top .ts1-hero,
+.ts1-bottom .ts1-hero { display: inline; }
+.ts1-bottom { font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 10px; color: #EFF9FB; text-align: center; letter-spacing: -0.01em; }
+.ts1-pipe { color: color-mix(in srgb, var(--nav-muted) 45%, transparent); }
+.ts1-channel-tag,
+.ts1-channel-tag * { color: color-mix(in srgb, var(--nav-muted) 65%, transparent) !important; }
+
+/* Red-marker words (LLM colourised with #FF3B3B) → yellow badge pill.
+   Badge colours route through --highlight-warm (bg) + --nav-bg (text). */
+.ts1-top span[style*="FF3B3B"],
+.ts1-bottom span[style*="FF3B3B"] {
+  background: var(--highlight-warm) !important;
+  color: var(--nav-bg) !important;
+  padding: 1px 7px 2px;
+  border-radius: 3px;
+  font-size: 105%;
+  -webkit-text-stroke: 0 !important;
+}
+/* Yellow-marker words (LLM #FFD100) → clean text in --highlight-warm. */
+.ts1-top span[style*="FFD100"],
+.ts1-bottom span[style*="FFD100"] {
+  color: var(--highlight-warm) !important;
+  -webkit-text-stroke: 0 !important;
+}
+
+/* Brutalist preservation: hero word keeps its signature hot-pink #FF2D78
+   (slightly brighter/pinker than brutalist's --accent2 red #DC2626). */
+body.theme-brutalist .ts1-hero { color: #FF2D78; }
+
+/* ── Staggered Morph — Exit Animations (desktop + mobile) ── */
+.morph-overlay {
+  position: absolute !important;
+  inset: 0;
+  z-index: 600;
+  pointer-events: none;
+  /* No parent fade: an opacity animation on the home-view itself uniformly
+     fades every child and hides the per-element staggered exits (each
+     child's own exit animation gets multiplied by the parent's shrinking
+     opacity, so they all appear to disappear together). Instead, homeEl
+     stays opaque until it's display:none'd at maxExitEnd (~1500ms) — by
+     which point every child has already animated to opacity 0 via
+     .morph-exit-*. resultsView enters only start ~50ms later, so the old
+     "bg covers entering panels" problem doesn't apply. */
+
+  /* Flatten the .home-view svh→nav-bg gradient to solid cream during the
+     morph. The gradient exists for the LANDING page's iOS URL-bar-collapse
+     case (cream above 100svh, dark navy below so the band doesn't read as
+     a cream flash). Once .morph-overlay is on the home-view is being
+     emptied for the transition — the dark-navy bottom of the gradient
+     reads as a "dark-blue snap" once the home content has faded out and
+     the bottom half of the gradient is exposed. Solid cream throughout
+     the morph keeps the transition feeling like one continuous surface. */
+  background: var(--bg) !important;
+}
+body.morphing { overflow: hidden; }
+
+@keyframes morph-exit-up {
+  to { opacity: 0; transform: translateY(-30px); }
+}
+@keyframes morph-exit-down {
+  to { opacity: 0; transform: translateY(30px); }
+}
+@keyframes morph-exit-scale {
+  to { opacity: 0; transform: scale(0.85); }
+}
+@keyframes morph-exit-fade {
+  to { opacity: 0; }
+}
+
+/* Snappy per-element exits (400ms / 350ms) combined with the staggered
+   delays in app.js (_runStaggeredMorph exitPlan) produce a clearly
+   one-at-a-time cadence: each element pops out quickly but visibly
+   separate from its neighbours. */
+.morph-exit-up    { animation: morph-exit-up 400ms ease-in forwards; }
+.morph-exit-down  { animation: morph-exit-down 400ms ease-in forwards; }
+.morph-exit-scale { animation: morph-exit-scale 350ms ease-in forwards; }
+.morph-exit-fade  { animation: morph-exit-fade 350ms ease-in forwards; }
+
+/* ── Mobile home reorder (keyboard-aware) ──
+   iOS Safari/Chrome auto-scroll a focused input into view if it sits
+   below ~22% of the viewport (empirically verified on test-kb.html).
+   That auto-scroll moves the visual viewport — not document scrollTop
+   — so it's not fixable in JS. The reliable fix is positional: pull
+   the paste pill into the top band, right under the headline, so the
+   keyboard overlays the page instead of shifting it.
+
+   Mobile-only (<=900px). Desktop hierarchy (headline → shark/bubble →
+   input → stats) is untouched — desktop has no soft keyboard so the
+   visual flow stays as designed. */
+@media (max-width: 900px) {
+  .hero {
+    justify-content: flex-start;
+    gap: 14px;
+    padding-top: 16px;
+  }
+  h1                 { order: 1; }
+  .cta-group         { order: 2; margin-top: 0; }
+  .home-status       { order: 3; }
+  .shark-bubble-wrap { order: 4; margin-top: 0; }
+  .home-stats        { order: 5; }
+  .features-row      { order: 6; }
+
+  /* iOS auto-zooms inputs with font-size < 16px on focus — the zoom
+     in + out reads as a "blink". Pin to 16px on mobile. */
+  .paste-input { font-size: 16px; }
+}
